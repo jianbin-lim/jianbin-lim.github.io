@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>异动雷达 · A股异常波动监测</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">异</div>
+      <div>
+        <h1>异动雷达</h1>
+        <p>A股异动池监测 · 沪深交易所规则复核</p>
+      </div>
+    </div>
+    <div class="topmeta">
+      <span class="live"><i></i>异动池监测</span>
+      <span class="sep">/</span>
+      <span class="src">盘口异动 · 东方财富 · 前复权</span>
+      <button class="rules-btn" id="btnRules" type="button">规则口径</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="radar" id="radar">
+      <div class="radar-head">
+        <div>
+          <div class="eyebrow">LIVE POOL · EASTMONEY INTRADAY</div>
+          <h2>今天，哪些股票可能触发严重异动<span>LIVE</span></h2>
+          <p>直接读取东方财富异动追踪中心的“严重异动预测”，显示次日 / 当日触发所需涨幅与价格；同时列出交易所重点监控名单。打开自动拉取一次，预测每 30 秒自动刷新，也可手动刷新。</p>
+        </div>
+        <div class="radar-actions">
+          <button class="btn primary" id="btnScan" type="button">扫描异动池</button>
+          <button class="btn ghost" id="btnWatchView" type="button">我的关注<span id="watchCount">0</span></button>
+        </div>
+      </div>
+      <div class="pool-tabs" id="poolTabs">
+        <button type="button" data-mode="near" class="on">严重异动预测</button>
+        <button type="button" data-mode="monitor">重点监控<span id="monitorCount">0</span></button>
+        <button type="button" data-mode="watch">我的关注</button>
+      </div>
+      <div class="pool-meta" id="poolMeta">
+        <span class="pulse"><i></i><b id="poolStatus">等待扫描</b></span>
+        <span id="poolTime">尚未拉取</span>
+        <span id="poolProgress"></span>
+        <span class="watch-io hidden" id="watchIO">
+          <button type="button" class="pool-refresh" id="btnWatchExport" title="把当前关注列表导出为 JSON 文件">导出关注</button>
+          <button type="button" class="pool-refresh" id="btnWatchImport" title="从 JSON 文件恢复关注列表">导入关注</button>
+          <input type="file" id="watchFile" accept=".json,application/json" hidden>
+        </span>
+        <button type="button" class="pool-refresh" id="btnPredictRefresh">刷新预测</button>
+      </div>
+      <div class="pool-error hidden" id="poolError"></div>
+      <div class="pool-list" id="poolList">
+        <div class="pool-empty"><b>正在准备异动池</b>首次打开会自动扫描；也可以点上方“扫描异动池”。</div>
+      </div>
+      <div class="pool-foot"><b>刷新规则：</b>严重异动预测每 30 秒自动刷新，也可点“刷新预测”；点“关注”后只对关注项每 60 秒刷新。次日价格按当前现价估算，当日按昨收计算；实际以交易所口径为准。</div>
+    </section>
+
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">STOCK CHECK · 个股复核</div>
+          <h2>输入代码或名称，复核它有没有踩到<em>监管红线</em></h2>
+          <p class="hero-desc">只看 10 日 +100%、30 日 +200% 两条严重异动红线；盘中叠加实时现价，今日涨幅按“今开→现价”单列，不计入昨收累计。</p>
+        </div>
+        <div class="search-box">
+          <form class="search-form" id="searchForm" autocomplete="off">
+            <div class="input-wrap">
+              <span>代码 / 名称</span>
+              <input id="codeInput" inputmode="search" maxlength="20" placeholder="600519 / 贵州茅台 / 宁德时代" aria-label="股票代码或名称">
+            </div>
+            <button class="btn primary" id="btnAnalyze" type="submit">开始分析<kbd>↵</kbd></button>
+            <button class="btn ghost" id="btnDemo" type="button">演示</button>
+          </form>
+          <div id="nameSuggest" class="name-suggest hidden" role="listbox"></div>
+          <div class="quick-row">
+            <span class="qlabel">快捷</span>
+            <button class="quick" type="button" data-code="600519">600519 贵州茅台</button>
+            <button class="quick" type="button" data-code="300750">300750 宁德时代</button>
+            <button class="quick" type="button" data-code="688981">688981 中芯国际</button>
+            <button class="quick" type="button" data-code="000001">000001 平安银行</button>
+            <button class="quick" type="button" data-code="002594">002594 比亚迪</button>
+          </div>
+          <label class="asof">复盘截止日
+            <input type="date" id="asofInput" aria-label="复盘截止日">
+            <b>留空 = 最新交易日</b>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <div id="errorBox" class="error-box hidden" role="alert">
+      <div class="eicon">!</div>
+      <div style="min-width:0">
+        <h4 id="errorTitle">行情拉取失败</h4>
+        <p id="errorMsg">请检查网络后重试。</p>
+        <small id="errorDetail"></small>
+      </div>
+      <div class="error-actions">
+        <button class="btn" id="btnRetry" type="button">重试</button>
+        <button class="btn ghost" id="btnErrorDemo" type="button">载入演示</button>
+      </div>
+    </div>
+
+    <div id="loadingBox" class="loading hidden"><span class="spinner"></span><span id="loadingText">正在拉取日K与指数行情…</span></div>
+
+    <div id="emptyState" class="empty">
+      <div class="orb">◎</div>
+      <h3>还没有载入标的</h3>
+      <p>输入 6 位代码或股票名称开始，或先用演示数据看一遍计算与界面。</p>
+      <div class="steps">
+        <span><b>01</b>拉取个股 + 对应指数日K</span>
+        <span><b>02</b>按区间计算 10日 / 30日偏离值</span>
+        <span><b>03</b>核对红线并回测后续涨跌</span>
+      </div>
+    </div>
+
+    <div id="result" class="hidden">
+      <div id="demoBanner" class="demo-banner hidden"><b>DEMO</b><span>演示模式：以下行情为本地生成的虚构数据，仅用于展示计算逻辑，不代表任何真实股票。</span></div>
+
+      <section class="stockbar" id="stockBar"></section>
+      <section id="verdict"></section>
+      <section class="metrics" id="metrics"></section>
+
+      <section class="card future-card">
+        <div class="card-h">
+          <div>
+            <h3>后续 10 个交易日 · 最大可涨空间</h3>
+            <p>假设大盘此后每天涨跌为 0，逐日推算不触发价格异动的最大单日涨幅</p>
+          </div>
+          <div class="right"><span class="hint" id="futureBind">当前：—</span></div>
+        </div>
+        <div class="future-today" id="futureToday"></div>
+        <div class="future-scroll">
+          <table class="future-table">
+            <thead>
+              <tr>
+                <th>未来第 N 日</th>
+                <th>最大可涨</th>
+                <th>10日最大涨幅偏离</th>
+                <th>30日最大涨幅偏离</th>
+                <th>约束条件</th>
+              </tr>
+            </thead>
+            <tbody id="futureBody"></tbody>
+          </table>
+        </div>
+        <div class="future-note" id="futureNote">
+          测算假设：D1 为下一交易日；指数此后每天涨跌幅为 0；10/30 日窗口随未来日滚动，每天在最近 10/30 个交易日内搜索涨幅最大的起点；旧涨幅滚出窗口后空间会恢复；再按 10 日 +100%、30 日 +200% 与涨停上限取当天最大值。0% 表示当天已不能再涨；若 0% 仍越线，对应偏离列会标红并注明“已越线”。不含 10 日同向异动次数、停牌与四舍五入，仅为理论空间。
+        </div>
+      </section>
+
+      <section class="card rules-card" id="rules">
+        <div class="card-h">
+          <div>
+            <h3>规则口径与边界</h3>
+            <p id="ruleSub">沪深交易所《交易规则》异常波动条款</p>
+          </div>
+          <div class="right"><span class="hint">当前标的的适用行已高亮</span></div>
+        </div>
+        <div class="rules-body">
+          <div class="rule-grid">
+            <div class="rule-block">
+              <h4>01 口径范围 <span>本页只算 10/30</span></h4>
+              <p>本页只核对 <code>10日 +100% / -50%</code> 与 <code>30日 +200% / -70%</code> 两条严重异动价格红线。</p>
+              <p><b>不计算：</b>3 日偏离、3 日换手异动、10 日同向异动次数；这些规则仅作为监管背景，不参与本页判定。</p>
+            </div>
+            <div class="rule-block">
+              <h4>02 严重异常波动 <span>价格红线</span></h4>
+              <p><b>短期暴炒：</b>10 日收盘价涨跌幅偏离值累计达到 <code>+100%</code> 或 <code>-50%</code>。</p>
+              <p><b>中期暴炒：</b>30 日累计达到 <code>+200%</code> 或 <code>-70%</code>。</p>
+            </div>
+            <div class="rule-block">
+              <h4>03 计算口径 <span>本页实现</span></h4>
+              <p><b>偏离值：</b><code>(个股区间涨幅 − 对应指数区间涨幅) × 100</code>；10/30 日偏离取窗口内涨幅最大的连续子区间起点。</p>
+              <p><b>对应指数：</b>沪主板→上证A指（000002），深主板→深证A指，创业板→创业板综，科创板→科创50。</p>
+              <p><b>涨停上限：</b>10%（主板）/ 20%（创业板、科创板）/ 5%（ST），仅用于未来 10 日空间表。</p>
+            </div>
+          </div>
+
+          <table class="rule-table" style="margin-top:12px">
+            <thead>
+              <tr><th>适用板块</th><th>10日严重阈值</th><th>30日严重阈值</th></tr>
+            </thead>
+            <tbody>
+              <tr data-board="shmain"><td>沪市主板</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
+              <tr data-board="szmain"><td>深市主板</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
+              <tr data-board="gem"><td>创业板</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
+              <tr data-board="star"><td>科创板</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
+              <tr data-board="st"><td>主板 ST / *ST</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
+            </tbody>
+          </table>
+
+          <div class="fine">
+            <b>边界说明：</b>① 数据优先东方财富日K（前复权）；回退腾讯/新浪时不提供换手率。② 不支持北交所；上市前 5 日无涨跌幅限制、停牌日、盘中临停、交易所认定的其他异常情形未单独建模。③ 本页只计算 10日/30日价格红线，3日、换手、同向异动仅作规则背景。④ 本页是规则计算器，不构成投资建议。
+          </div>
+        </div>
+      </section>
+
+      <div class="foot">
+        <div><b>数据：</b>东方财富公开行情 / 盘口异动 / 重点监控名单；日K依次尝试东财、腾讯、新浪；实时价来自腾讯 · 东财/腾讯前复权，新浪按接口口径<br><b>规则：</b>沪深交易所《交易规则》严重异常波动价格条款</div>
+        <div>本工具只做事实计算与历史统计，不预测、不荐股、不构成任何投资建议。</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

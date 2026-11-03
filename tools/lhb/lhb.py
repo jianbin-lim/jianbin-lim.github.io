@@ -482,6 +482,15 @@ def write_html(payload: dict, path: str, backlink: str = "") -> None:
         fh.write(html)
 
 
+def _read_version_hash(directory: str) -> str | None:
+    path = os.path.join(directory, "version.json")
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            return (json.load(fh) or {}).get("hash")
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def write_version(payload: dict, directory: str, html_name: str = "index.html") -> dict:
     """给页面轮询用的版本文件，静态站（GitHub Pages）和本地服务共用。"""
     version = {
@@ -861,8 +870,17 @@ def main(argv=None) -> int:
 
     # 静态站模式（GitHub Pages）：目录下只放 index.html + version.json
     if args.static:
-        os.makedirs(args.static, exist_ok=True)
+        digest = payload_hash(payload)
         html_path = os.path.join(args.static, "index.html")
+        if (
+            os.path.exists(html_path)
+            and _read_version_hash(args.static) == digest
+        ):
+            # 数据没变就不重写，避免「生成时间」变化产生无意义的提交
+            print(f"无变化（版本 {digest}），跳过写入")
+            return 0
+
+        os.makedirs(args.static, exist_ok=True)
         write_html(payload, html_path, backlink)
         version = write_version(payload, args.static, "index.html")
         print(

@@ -460,6 +460,8 @@ def write_csv(payload: dict, path: str) -> None:
 def payload_hash(payload: dict) -> str:
     """内容指纹（不含生成时间），用来判断数据有没有真的变。"""
     body = {k: v for k, v in payload.items() if k != "generated"}
+    # 模板本身变了也要重新生成，否则页面改动要等数据变化才生效
+    body["_template"] = hashlib.sha1(TEMPLATE.encode("utf-8")).hexdigest()[:10]
     return hashlib.sha1(
         json.dumps(body, sort_keys=True, ensure_ascii=False).encode("utf-8")
     ).hexdigest()[:16]

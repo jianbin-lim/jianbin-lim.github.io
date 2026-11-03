@@ -594,7 +594,8 @@ tfoot td{border-top:1px solid var(--line);font-weight:700;background:#10141f}
   margin-right:10px;border-bottom:1px dashed #3a4152;padding-bottom:1px}
 .backlink:hover{color:var(--gold);border-color:var(--gold)}
 .flt input{accent-color:var(--gold)}
-a.jump{color:var(--blue);cursor:pointer}
+a.jump{color:var(--blue);cursor:pointer;text-decoration:none}
+a.jump:hover{color:#8cc4ff;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -753,14 +754,19 @@ function renderYouliao(){
     main.innerHTML = `<div class="empty">标签库还没有命中任何席位，去 tags.csv 里加几条「营业部关键词,标签」再重跑。</div>`;
     return;
   }
-  const rows = list.map(a => `<tr>
+  const rows = list.map(a => {
+    const links = [...a.stocks.entries()]
+      .map(([code, name]) => `<a class="jump" data-code="${esc(code)}" href="#" title="看 ${esc(name)} 的席位">${esc(name)}</a>`)
+      .join("、");
+    return `<tr>
       <td class="l"><span class="pill ty${esc(a.kind)}">${esc(a.tag)}</span></td>
-      <td class="l dim">${[...a.stocks.values()].map(esc).join("、")}</td>
+      <td class="l dim">${links}</td>
       <td class="num ${cls(a.net)}">${fmt(a.net)}</td>
       <td class="num">${fmt(a.buy)}</td>
       <td class="num">${fmt(a.sell)}</td>
       <td class="num">${a.stocks.size}</td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
   main.innerHTML = `<h2 class="sec">游资 / 席位 标签榜（按净额排序）</h2>
     <label class="flt"><input type="checkbox" id="hideInst" ${hideInst?"checked":""}>
       隐藏机构 / 北向（${all.length - all.filter(a=>a.kind!=="机构").length} 条）</label>
@@ -768,7 +774,26 @@ function renderYouliao(){
       <th class="l">涉及个股</th><th style="width:110px">净额</th>
       <th style="width:110px">买入</th><th style="width:110px">卖出</th><th style="width:70px">只数</th></tr></thead>
       <tbody>${rows}</tbody></table>
-    <div class="meta" style="margin-top:12px">净额 = 该标签下所有上榜席位当日净额之和（同一席位在买五、卖五各出现一次只算一次）。标签来自 tags.csv，社区口径，仅供参考。</div>`;
+    <div class="meta" style="margin-top:12px">净额 = 该标签下所有上榜席位当日净额之和（同一席位在买五、卖五各出现一次只算一次）。点个股名可跳到该股席位明细。</div>`;
+  // 点个股名 → 切到个股页并定位
+  main.querySelectorAll("a.jump").forEach(el => el.onclick = (ev) => {
+    ev.preventDefault();
+    const code = el.dataset.code;
+    if (!code) return;
+    current = code;
+    store.set("lhb.code", code);
+    view = "stocks";
+    store.set("lhb.view", view);
+    keyword = "";
+    const q = $("#q");
+    if (q) q.value = "";
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === view));
+    render();
+    const active = $("#side").querySelector(".item.on");
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: "center" });
+    const pane = $("#main");
+    if (pane) pane.scrollTop = 0;
+  });
   const cb = $("#hideInst");
   if (cb) cb.onchange = (e) => { hideInst = e.target.checked; renderYouliao(); };
 }

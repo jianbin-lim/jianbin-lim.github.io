@@ -678,12 +678,32 @@ function renderList(){
   side.innerHTML = html;
   side.querySelectorAll(".item").forEach(el => el.onclick = () => {
     const keep = side.scrollTop;
-    current = el.dataset.code;
-    store.set("lhb.code", current);
-    renderList();
+    openStock(el.dataset.code, false);
     side.scrollTop = keep;
-    renderDetail();
   });
+}
+
+// 打开某只股票的席位明细；在游资榜里点左侧列表或点个股名都会走到这里
+function openStock(code, center){
+  current = code;
+  store.set("lhb.code", code);
+  let switched = false;
+  if (view !== "stocks"){
+    view = "stocks";
+    store.set("lhb.view", view);
+    switched = true;
+    document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === view));
+  }
+  renderList();
+  if (switched){
+    const pane = $("#main");
+    if (pane) pane.scrollTop = 0;
+  }
+  if (center){
+    const active = $("#side").querySelector(".item.on");
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: "center" });
+  }
+  renderDetail();
 }
 
 function seatTable(seats, side){
@@ -782,19 +802,10 @@ function renderYouliao(){
     ev.preventDefault();
     const code = el.dataset.code;
     if (!code) return;
-    current = code;
-    store.set("lhb.code", code);
-    view = "stocks";
-    store.set("lhb.view", view);
     keyword = "";
     const q = $("#q");
     if (q) q.value = "";
-    document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === view));
-    render();
-    const active = $("#side").querySelector(".item.on");
-    if (active && active.scrollIntoView) active.scrollIntoView({ block: "center" });
-    const pane = $("#main");
-    if (pane) pane.scrollTop = 0;
+    openStock(code, true);
   });
   const cb = $("#hideInst");
   if (cb) cb.onchange = (e) => { hideInst = e.target.checked; renderYouliao(); };
@@ -825,7 +836,7 @@ const isHttp = (typeof location !== "undefined") && location.protocol.indexOf("h
   if (DATA.stale){
     live.innerHTML = `<span class="stale" title="龙虎榜在交易日 16:30–17:00 之后更新">${esc(DATA.hint || (DATA.today + " 数据未出"))}，当前为 ${esc(DATA.date)}</span>`;
   } else if (isHttp){
-    live.innerHTML = `<span class="dim" style="font-size:12px"><span class="dot"></span>自动刷新中</span>`;
+    live.innerHTML = `<span class="dim" style="font-size:12px" title="页面每 60 秒检查一次版本号，有新版自动刷新；龙虎榜数据在交易日 16:30 之后发布，每日 17:15 起定时更新"><span class="dot"></span>自动刷新中 · 每 60 秒检查</span>`;
   }
 })();
 

@@ -2518,6 +2518,8 @@ function boot(){
   if(p.get("demo")==="1"){ loadDemo(); return; }
   var code=p.get("code");
   if(code){ $("#codeInput").value=code; runAnalyze(code); return; }
+  var mode=p.get("mode");
+  if(mode){ setPoolMode(mode); return; }
   setTimeout(function(){
     if(!document.hidden) scanPool(true);
     $("#codeInput").focus();

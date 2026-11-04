@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>异动雷达 · A股异常波动监测</title>
-<link rel="stylesheet" href="styles.css?v=20261104-1">
+<link rel="stylesheet" href="styles.css?v=20261105-1">
 </head>
 <body>
 <div class="app">
@@ -130,7 +130,7 @@
         <div class="card-h">
           <div>
             <h3>T+0 至 T+10 · 最大可涨空间</h3>
-            <p>T+0 今日：盘中显示当前涨幅与今日最大；收盘后显示收盘价。T+1–T+10 按大盘不变逐日推算</p>
+            <p>T+0：09:15–15:00 为当日盘中；15:00 收盘后自动切到下一交易日。T+1–T+10 按大盘不变逐日推算</p>
           </div>
           <div class="right"><span class="hint" id="futureBind">当前：—</span></div>
         </div>
@@ -150,7 +150,7 @@
           </table>
         </div>
         <div class="future-note" id="futureNote">
-          测算假设：T+0 为今日，盘中显示当前涨幅、今日最大涨幅和理论最高价，收盘后显示当日收盘价；T+1 为下一交易日，起点为现价；指数此后每天涨跌幅为 0；10/30 日窗口随未来日滚动，每天在最近 10/30 个交易日内搜索涨幅最大的起点；旧涨幅滚出窗口后空间会恢复；再按 10 日 +100%、30 日 +200% 与涨停上限取当天最大值。0% 表示当天已不能再涨；若 0% 仍越线，对应偏离列会标红并注明“已越线”。不含 10 日同向异动次数、停牌与四舍五入，仅为理论空间。
+          测算假设：T+0 在 09:15–15:00 为当日盘中；15:00 收盘后自动切到下一交易日。T+1 起按大盘不变逐日推算，起点为当日收盘价；指数每天涨跌幅为 0；10/30 日窗口随未来日滚动，每天在最近 10/30 个交易日内搜索涨幅最大的起点；旧涨幅滚出窗口后空间会恢复；再按 10 日 +100%、30 日 +200% 与涨停上限取当天最大值。0% 表示当天已不能再涨；若 0% 仍越线，对应偏离列会标红并注明“已越线”。不含 10 日同向异动次数、停牌与四舍五入，仅为理论空间。
         </div>
       </section>
 
@@ -211,6 +211,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="app.js?v=20261104-1"></script>
+<script src="app.js?v=20261105-1"></script>
 </body>
 </html>

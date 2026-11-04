@@ -1205,7 +1205,8 @@ function futurePlan(daily,opt){
   var idxLast=daily[last].idxClose;
   var limit=opt.limit||10;
   var out=[];
-  for(var k=1;k<=10;k++){
+  var futureDate=nextTradeDate(daily[last].date);
+  for(var k=1;k<=11;k++){
     var i=last+k;
     var prev=closes[i-1];
     if(prev==null) break;
@@ -1255,13 +1256,14 @@ function futurePlan(daily,opt){
     var over30=d30!=null&&d30>200.05;
     var bindCol=binding.indexOf("10日")===0?"10":(binding.indexOf("30日")===0?"30":"");
     out.push({
-      day:k, date:null, gain:gain, maxPrice:px,
+      day:k, date:futureDate, gain:gain, maxPrice:px,
       dev10:d10, dev30:d30, binding:binding, bindCol:bindCol,
       zeroOver:zeroOver,
       over10:over10, over30:over30, over:over10||over30,
       base10Date:b10?b10.date:"", base10Pct:b10?b10.pct:null,
       base30Date:b30?b30.date:"", base30Pct:b30?b30.pct:null
     });
+    futureDate=nextTradeDate(futureDate);
   }
   return out;
 }
@@ -1708,16 +1710,25 @@ function renderFuture(a){
   if(todayEl){
     if(a.realtime){
       var rt=a.realtime;
-      todayEl.innerHTML='<span class="ft-label">'+(a.closed?"T+0 收盘":"T+0 盘中")+'</span>'+
-        '<b class="'+(a.level==="sev"?"up":a.level==="watch"?"amber":"g")+'">'+(a.level==="sev"?"触发严重异动":a.level==="watch"?"接近红线":"未触发")+'</b>'+
-        '<span>今开→'+(a.closed?"收盘":"现价")+' <b class="'+cls(rt.openPct)+'">'+fmtPct(rt.openPct)+'</b></span>'+
-        '<span>'+(a.closed?"收盘":"当前")+' 10日 <b>'+fmtPct(a.last.dev10)+'</b>（'+esc(fmtRange(a.range10))+'） / 30日 <b>'+fmtPct(a.last.dev30)+'</b>（'+esc(fmtRange(a.range30))+'）</span>'+
-        '<em>'+(a.closed?'今日已收盘；T+1 起以收盘价为起点。':'T+1 起以现价为起点；今日实际涨幅已计入当前值。')+'</em>';
+      var nd0=a.future&&a.future[0]?a.future[0].date:nextTradeDate(a.last.date);
+      if(a.closed){
+        todayEl.innerHTML='<span class="ft-label">T+0 下一交易日</span>'+
+          '<b class="'+(a.level==="sev"?"up":a.level==="watch"?"amber":"g")+'">'+(a.level==="sev"?"今日触发严重异动":a.level==="watch"?"今日接近红线":"今日未触发")+'</b>'+
+          '<span>今日收盘 <b>'+fmtPrice(rt.price)+'</b> <b class="'+cls(rt.dayPct)+'">'+fmtPct(rt.dayPct)+'</b></span>'+
+          '<span>当前 10日 <b>'+fmtPct(a.last.dev10)+'</b>（'+esc(fmtRange(a.range10))+'） / 30日 <b>'+fmtPct(a.last.dev30)+'</b>（'+esc(fmtRange(a.range30))+'）</span>'+
+          '<em>今天已收盘：T+0 已切到 '+fmtMD(nd0)+'；明早 09:15 起按实时重算。</em>';
+      }else{
+        todayEl.innerHTML='<span class="ft-label">T+0 盘中</span>'+
+          '<b class="'+(a.level==="sev"?"up":a.level==="watch"?"amber":"g")+'">'+(a.level==="sev"?"触发严重异动":a.level==="watch"?"接近红线":"未触发")+'</b>'+
+          '<span>今开→现价 <b class="'+cls(rt.openPct)+'">'+fmtPct(rt.openPct)+'</b></span>'+
+          '<span>当前 10日 <b>'+fmtPct(a.last.dev10)+'</b>（'+esc(fmtRange(a.range10))+'） / 30日 <b>'+fmtPct(a.last.dev30)+'</b>（'+esc(fmtRange(a.range30))+'）</span>'+
+          '<em>T+1 起以现价为起点；今日实际涨幅已计入当前值。</em>';
+      }
     }else{
       todayEl.innerHTML='';
     }
   }
-  var assumptions='测算假设：T+0 为今日；盘中显示当前涨幅、今日最大涨幅和理论最高价，收盘后显示当日收盘价。T+1 为下一交易日，起点为现价；指数此后每天涨跌幅为 0；10/30 日窗口随未来日滚动，每天在最近 10/30 个交易日内搜索涨幅最大的起点；旧涨幅滚出窗口后空间会恢复；再按 10 日 +100%、30 日 +200% 与涨停上限取当天最大值。高亮数字为该日理论收盘价。0% 表示当天已不能再涨；若 0% 仍越线，对应偏离列会标红并注明“已越线”。不含 10 日同向异动次数、停牌与四舍五入，仅为理论空间。';
+  var assumptions='测算假设：T+0 在 09:15–15:00 为当日盘中；15:00 收盘后自动切到下一交易日。T+1 起按大盘不变逐日推算，起点为当日收盘价；指数每天涨跌幅为 0；10/30 日窗口随未来日滚动，每天在最近 10/30 个交易日内搜索涨幅最大的起点；旧涨幅滚出窗口后空间会恢复；再按 10 日 +100%、30 日 +200% 与涨停上限取当天最大值。高亮数字为该日理论收盘价。0% 表示当天已不能再涨；若 0% 仍越线，对应偏离列会标红并注明“已越线”。不含 10 日同向异动次数、停牌与四舍五入，仅为理论空间。';
   if(!a.future||!a.future.length){
     body.innerHTML='<tr><td colspan="5" class="empty">数据不足，至少需要 31 个交易日才能推算</td></tr>';
     if(note) note.textContent=assumptions;
@@ -1725,7 +1736,7 @@ function renderFuture(a){
   }
   var first=a.future[0], bindEl=$("#futureBind"), t0=buildTodayRow(a);
   if(bindEl){
-    if(t0&&t0.closed) bindEl.textContent="当前：已收盘";
+    if(t0&&t0.closed) bindEl.textContent="当前：已收盘 · T+0 为下一交易日";
     else if(t0&&t0.bindCol) bindEl.textContent="当前：卡 "+(t0.bindCol==="10"?"10日":"30日")+"线"+(t0.zeroOver?"（已越线）":"");
     else if(first&&first.zeroOver) bindEl.textContent="当前：卡 "+(first.bindCol==="10"?"10日":"30日")+"线（0% 仍越线）";
     else if(first&&first.bindCol) bindEl.textContent="当前：卡 "+(first.bindCol==="10"?"10日":"30日")+"线";
@@ -1740,7 +1751,11 @@ function renderFuture(a){
       (zero?'<span class="audit">T+'+zero.day+' 为 0%：已贴住 '+(zero.bindCol==="30"?"30":"10")+' 日线，再涨就会突破，所以这里不能按涨停推演'+(next?'；T+'+next.day+' 起旧涨幅滚出窗口，空间恢复。':'。')+'</span> ':'');
     note.innerHTML=lead+audit+assumptions;
   }
-  body.innerHTML=todayRowHtml(a)+a.future.map(function(f){
+  // 15:00 收盘后 T+0 已经切到下一交易日；盘中 T+0 才是今天。
+  var isClosed=!!a.closed;
+  var rows=(a.future||[]).slice(0,isClosed?11:10);
+  body.innerHTML=(isClosed?"":todayRowHtml(a))+rows.map(function(f){
+    var label=isClosed?f.day-1:f.day;
     var gainCls=f.gain>0?"r":"dm";
     var bindTxt=f.zeroOver?((f.bindCol==="10"?"10日线":f.bindCol==="30"?"30日线":f.binding)+" · 0% 仍越线"):f.binding;
     var d10Cls=(f.bindCol==="10"||f.over10)?"bindline":"";
@@ -1749,8 +1764,8 @@ function renderFuture(a){
     var d30Over=f.over30?'<small class="bindsmall">已越线</small>':'';
     var t10='10日基准日 '+(f.base10Date||"—")+(f.base10Pct==null?"":"（当日 "+fmtPct(f.base10Pct)+"）");
     var t30='30日基准日 '+(f.base30Date||"—")+(f.base30Pct==null?"":"（当日 "+fmtPct(f.base30Pct)+"）");
-    return '<tr class="'+(f.zeroOver?"binding":"")+'">'+
-      '<td><span class="daytag">T+'+f.day+'</span><small class="future-extra">'+esc(bindTxt)+'</small></td>'+
+    return '<tr class="'+(isClosed&&f.day===1?"today-row ":"")+(f.zeroOver?"binding":"")+'">'+
+      '<td><span class="daytag'+(isClosed&&f.day===1?" t0":"")+'">T+'+label+'</span><small class="future-extra">'+(f.date?fmtMD(f.date)+" · ":"")+esc(bindTxt)+'</small></td>'+
       '<td><span class="future-gain"><b class="'+gainCls+'">'+fmtPct(f.gain)+'</b><span class="price-hl">'+(f.maxPrice!=null?"¥"+fmtPrice(f.maxPrice):"—")+'</span></span></td>'+
       '<td class="'+d10Cls+'" title="'+esc(t10)+'">'+fmtPct(f.dev10)+d10Over+'</td>'+
       '<td class="'+d30Cls+'" title="'+esc(t30)+'">'+fmtPct(f.dev30)+d30Over+'</td>'+

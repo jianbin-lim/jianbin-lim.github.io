@@ -317,6 +317,24 @@ button{cursor:pointer}
 @media(max-width:420px){
   .radar-actions{display:grid;grid-template-columns:1fr 1fr}
   .pr-dev b{font-size:12px}
+  .pool-row:not(.predict){
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:"id" "quote" "signal" "dev" "progress" "act";
+  }
+  .pool-row:not(.predict) .pr-quote{text-align:left;align-items:flex-start}
+  .pool-row:not(.predict) .pr-act{justify-content:stretch}
+  .pool-row:not(.predict) .pr-act button{flex:1}
+}
+@media(max-width:560px){
+  .pool-row:not(.predict){
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:"id" "quote" "signal" "dev" "progress" "act";
+  }
+  .pool-row:not(.predict) .pr-quote{text-align:left;align-items:flex-start}
+  .pool-row:not(.predict) .pr-act{justify-content:stretch}
+  .pool-row:not(.predict) .pr-act button{flex:1}
+  .pool-row:not(.predict) .pr-dev small,
+  .pool-row:not(.predict) .pr-progress small{overflow-wrap:anywhere}
 }
 
 /* ---------- loading / error / empty ---------- */

@@ -1,26 +1,26 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>寮傚姩闆疯揪 路 A鑲″紓甯告尝鍔ㄧ洃娴?/title>
+<title>异动雷达 · A股异常波动监测</title>
 <link rel="stylesheet" href="styles.css?v=20261106-2">
 </head>
 <body>
 <div class="app">
   <header class="topbar">
     <div class="brand">
-      <div class="logo">寮?/div>
+      <div class="logo">异</div>
       <div>
-        <h1>寮傚姩闆疯揪</h1>
-        <p>A鑲″紓鍔ㄦ睜鐩戞祴 路 娌繁浜ゆ槗鎵€瑙勫垯澶嶆牳</p>
+        <h1>异动雷达</h1>
+        <p>A股异动池监测 · 沪深交易所规则复核</p>
       </div>
     </div>
     <div class="topmeta">
-      <span class="live"><i></i>寮傚姩姹犵洃娴?/span>
+      <span class="live"><i></i>异动池监测</span>
       <span class="sep">/</span>
-      <span class="src">鐩樺彛寮傚姩 路 涓滄柟璐㈠瘜 路 鍓嶅鏉?/span>
-      <button class="rules-btn" id="btnRules" type="button">瑙勫垯鍙ｅ緞</button>
+      <span class="src">盘口异动 · 东方财富 · 前复权</span>
+      <button class="rules-btn" id="btnRules" type="button">规则口径</button>
     </div>
   </header>
 
@@ -28,65 +28,66 @@
     <section class="radar" id="radar">
       <div class="radar-head">
         <div>
-          <div class="eyebrow">LIVE POOL 路 EASTMONEY INTRADAY</div>
-          <h2>浠婂ぉ锛屽摢浜涜偂绁ㄥ彲鑳借Е鍙戜弗閲嶅紓鍔?span>LIVE</span></h2>
-          <p>鐩存帴璇诲彇涓滄柟璐㈠瘜寮傚姩杩借釜涓績鐨勨€滀弗閲嶅紓鍔ㄩ娴嬧€濓紝鍙樉绀烘鏃ヨЕ鍙戞墍闇€娑ㄥ箙涓庝环鏍硷紱鍚屾椂鍒楀嚭浜ゆ槗鎵€閲嶇偣鐩戞帶鍚嶅崟銆傛墦寮€鑷姩鎷夊彇涓€娆★紝棰勬祴姣?30 绉掕嚜鍔ㄥ埛鏂帮紝涔熷彲鎵嬪姩鍒锋柊銆?/p>
+          <div class="eyebrow">LIVE POOL · EASTMONEY INTRADAY</div>
+          <h2>今天，哪些股票可能触发严重异动<span>LIVE</span></h2>
+          <p>直接读取东方财富异动追踪中心的“严重异动预测”，只显示次日触发所需涨幅与价格；同时列出交易所重点监控名单。打开自动拉取一次，预测每 30 秒自动刷新，也可手动刷新。</p>
         </div>
         <div class="radar-actions">
-          <button class="btn primary" id="btnScan" type="button">鎵弿寮傚姩姹?/button>
-          <button class="btn ghost" id="btnWatchView" type="button">鎴戠殑鍏虫敞<span id="watchCount">0</span></button>
+          <button class="btn primary" id="btnScan" type="button">扫描异动池</button>
+          <button class="btn ghost" id="btnWatchView" type="button">我的关注<span id="watchCount">0</span></button>
         </div>
       </div>
       <div class="pool-tabs" id="poolTabs">
-        <button type="button" data-mode="near" class="on">涓ラ噸寮傚姩棰勬祴</button>
-        <button type="button" data-mode="monitor">閲嶇偣鐩戞帶<span id="monitorCount">0</span></button>
-        <button type="button" data-mode="watch">鎴戠殑鍏虫敞</button>
+        <button type="button" data-mode="near" class="on">严重异动预测</button>
+        <button type="button" data-mode="monitor">重点监控<span id="monitorCount">0</span></button>
+        <button type="button" data-mode="watch">我的关注</button>
       </div>
       <div class="pool-meta" id="poolMeta">
-        <span class="pulse"><i></i><b id="poolStatus">绛夊緟鎵弿</b></span>
-        <span id="poolTime">灏氭湭鎷夊彇</span>
+        <span class="pulse"><i></i><b id="poolStatus">等待扫描</b></span>
+        <span id="poolTime">尚未拉取</span>
         <span id="poolProgress"></span>
         <span class="watch-io hidden" id="watchIO">
-          <button type="button" class="pool-refresh" id="btnWatchExport" title="鎶婂綋鍓嶅叧娉ㄥ垪琛ㄥ鍑轰负 JSON 鏂囦欢">瀵煎嚭鍏虫敞</button>
-          <button type="button" class="pool-refresh" id="btnWatchImport" title="浠?JSON 鏂囦欢鎭㈠鍏虫敞鍒楄〃">瀵煎叆鍏虫敞</button>
+          <button type="button" class="pool-refresh" id="btnWatchExport" title="把当前关注列表导出为 JSON 文件">导出关注</button>
+          <button type="button" class="pool-refresh" id="btnWatchImport" title="从 JSON 文件恢复关注列表">导入关注</button>
           <input type="file" id="watchFile" accept=".json,application/json" hidden>
         </span>
-        <button type="button" class="pool-refresh" id="btnPredictRefresh">鍒锋柊棰勬祴</button>
+        <button type="button" class="pool-refresh" id="btnPredictRefresh">刷新预测</button>
       </div>
       <div class="pool-error hidden" id="poolError"></div>
       <div class="pool-list" id="poolList">
-        <div class="pool-empty"><b>姝ｅ湪鍑嗗寮傚姩姹?/b>棣栨鎵撳紑浼氳嚜鍔ㄦ壂鎻忥紱涔熷彲浠ョ偣涓婃柟鈥滄壂鎻忓紓鍔ㄦ睜鈥濄€?/div>
+        <div class="pool-empty"><b>正在准备异动池</b>首次打开会自动扫描；也可以点上方“扫描异动池”。</div>
       </div>
-      <div class="pool-foot"><b>鍒锋柊瑙勫垯锛?/b>涓ラ噸寮傚姩棰勬祴姣?30 绉掕嚜鍔ㄥ埛鏂帮紝涔熷彲鐐光€滃埛鏂伴娴嬧€濓紱鐐光€滃叧娉ㄢ€濆悗鍙鍏虫敞椤规瘡 60 绉掑埛鏂般€傛鏃ヤ环鏍兼寜褰撳墠鐜颁环浼扮畻锛涘疄闄呬互浜ゆ槗鎵€鍙ｅ緞涓哄噯銆?/div>
+      <div class="pool-foot"><b>刷新规则：</b>严重异动预测每 30 秒自动刷新，也可点“刷新预测”；点“关注”后只对关注项每 60 秒刷新。次日价格按当前现价估算；实际以交易所口径为准。</div>
     </section>
 
     <section class="hero">
       <div class="hero-grid">
         <div>
-          <div class="eyebrow">STOCK CHECK 路 涓偂澶嶆牳</div>
-          <h2>杈撳叆浠ｇ爜鎴栧悕绉帮紝澶嶆牳瀹冩湁娌℃湁韪╁埌<em>鐩戠绾㈢嚎</em></h2>
-          <p class="hero-desc">鍙湅 10 鏃?+100%銆?0 鏃?+200% 涓ゆ潯涓ラ噸寮傚姩绾㈢嚎锛涚洏涓彔鍔犲疄鏃剁幇浠凤紝浠婃棩娑ㄥ箙鎸夆€滀粖寮€鈫掔幇浠封€濆崟鍒楋紝涓嶈鍏ユ槰鏀剁疮璁°€?/p>
+          <div class="eyebrow">STOCK CHECK · 个股复核</div>
+          <h2>输入代码或名称，复核它有没有踩到<em>监管红线</em></h2>
+          <p class="hero-desc">只看 10 日 +100%、30 日 +200% 两条严重异动红线；盘中叠加实时现价，今日涨幅按“今开→现价”单列，不计入昨收累计。</p>
         </div>
         <div class="search-box">
           <form class="search-form" id="searchForm" autocomplete="off">
             <div class="input-wrap">
-              <span>浠ｇ爜 / 鍚嶇О</span>
-              <input id="codeInput" inputmode="search" maxlength="20" placeholder="600519 / 璐靛窞鑼呭彴 / 瀹佸痉鏃朵唬" aria-label="鑲＄エ浠ｇ爜鎴栧悕绉?>
+              <span>代码 / 名称</span>
+              <input id="codeInput" inputmode="search" maxlength="20" placeholder="600519 / 贵州茅台 / 宁德时代" aria-label="股票代码或名称">
             </div>
-            <button class="btn primary" id="btnAnalyze" type="submit">寮€濮嬪垎鏋?kbd>鈫?/kbd></button>
-            <button class="btn ghost" id="btnDemo" type="button">婕旂ず</button>
+            <button class="btn primary" id="btnAnalyze" type="submit">开始分析<kbd>↵</kbd></button>
+            <button class="btn ghost" id="btnDemo" type="button">演示</button>
           </form>
           <div id="nameSuggest" class="name-suggest hidden" role="listbox"></div>
           <div class="quick-row">
-            <span class="qlabel">蹇嵎</span>
-            <button class="quick" type="button" data-code="600519">600519 璐靛窞鑼呭彴</button>
-            <button class="quick" type="button" data-code="300750">300750 瀹佸痉鏃朵唬</button>
-            <button class="quick" type="button" data-code="688981">688981 涓姱鍥介檯</button>
-            <button class="quick" type="button" data-code="000001">000001 骞冲畨閾惰</button>
-            <button class="quick" type="button" data-code="002594">002594 姣斾簹杩?/button>
+            <span class="qlabel">快捷</span>
+            <button class="quick" type="button" data-code="600519">600519 贵州茅台</button>
+            <button class="quick" type="button" data-code="300750">300750 宁德时代</button>
+            <button class="quick" type="button" data-code="688981">688981 中芯国际</button>
+            <button class="quick" type="button" data-code="000001">000001 平安银行</button>
+            <button class="quick" type="button" data-code="002594">002594 比亚迪</button>
           </div>
-          <label class="asof">澶嶇洏鎴鏃?            <input type="date" id="asofInput" aria-label="澶嶇洏鎴鏃?>
-            <b>鐣欑┖ = 鏈€鏂颁氦鏄撴棩</b>
+          <label class="asof">复盘截止日
+            <input type="date" id="asofInput" aria-label="复盘截止日">
+            <b>留空 = 最新交易日</b>
           </label>
         </div>
       </div>
@@ -95,31 +96,31 @@
     <div id="errorBox" class="error-box hidden" role="alert">
       <div class="eicon">!</div>
       <div style="min-width:0">
-        <h4 id="errorTitle">琛屾儏鎷夊彇澶辫触</h4>
-        <p id="errorMsg">璇锋鏌ョ綉缁滃悗閲嶈瘯銆?/p>
+        <h4 id="errorTitle">行情拉取失败</h4>
+        <p id="errorMsg">请检查网络后重试。</p>
         <small id="errorDetail"></small>
       </div>
       <div class="error-actions">
-        <button class="btn" id="btnRetry" type="button">閲嶈瘯</button>
-        <button class="btn ghost" id="btnErrorDemo" type="button">杞藉叆婕旂ず</button>
+        <button class="btn" id="btnRetry" type="button">重试</button>
+        <button class="btn ghost" id="btnErrorDemo" type="button">载入演示</button>
       </div>
     </div>
 
-    <div id="loadingBox" class="loading hidden"><span class="spinner"></span><span id="loadingText">姝ｅ湪鎷夊彇鏃涓庢寚鏁拌鎯呪€?/span></div>
+    <div id="loadingBox" class="loading hidden"><span class="spinner"></span><span id="loadingText">正在拉取日K与指数行情…</span></div>
 
     <div id="emptyState" class="empty">
-      <div class="orb">鈼?/div>
-      <h3>杩樻病鏈夎浇鍏ユ爣鐨?/h3>
-      <p>杈撳叆 6 浣嶄唬鐮佹垨鑲＄エ鍚嶇О寮€濮嬶紝鎴栧厛鐢ㄦ紨绀烘暟鎹湅涓€閬嶈绠椾笌鐣岄潰銆?/p>
+      <div class="orb">◎</div>
+      <h3>还没有载入标的</h3>
+      <p>输入 6 位代码或股票名称开始，或先用演示数据看一遍计算与界面。</p>
       <div class="steps">
-        <span><b>01</b>鎷夊彇涓偂 + 瀵瑰簲鎸囨暟鏃</span>
-        <span><b>02</b>鎸夊尯闂磋绠?10鏃?/ 30鏃ュ亸绂诲€?/span>
-        <span><b>03</b>鏍稿绾㈢嚎骞跺洖娴嬪悗缁定璺?/span>
+        <span><b>01</b>拉取个股 + 对应指数日K</span>
+        <span><b>02</b>按区间计算 10日 / 30日偏离值</span>
+        <span><b>03</b>核对红线并回测后续涨跌</span>
       </div>
     </div>
 
     <div id="result" class="hidden">
-      <div id="demoBanner" class="demo-banner hidden"><b>DEMO</b><span>婕旂ず妯″紡锛氫互涓嬭鎯呬负鏈湴鐢熸垚鐨勮櫄鏋勬暟鎹紝浠呯敤浜庡睍绀鸿绠楅€昏緫锛屼笉浠ｈ〃浠讳綍鐪熷疄鑲＄エ銆?/span></div>
+      <div id="demoBanner" class="demo-banner hidden"><b>DEMO</b><span>演示模式：以下行情为本地生成的虚构数据，仅用于展示计算逻辑，不代表任何真实股票。</span></div>
 
       <section class="stockbar" id="stockBar"></section>
       <section id="verdict"></section>
@@ -128,79 +129,81 @@
       <section class="card future-card">
         <div class="card-h">
           <div>
-            <h3>T+0 鑷?T+10 路 鏈€澶у彲娑ㄧ┖闂?/h3>
-            <p>T+0锛?9:15鈥?5:00 涓哄綋鏃ョ洏涓紱15:00 鏀剁洏鍚庤嚜鍔ㄥ垏鍒颁笅涓€浜ゆ槗鏃ャ€俆+1鈥揟+10 鎸夊ぇ鐩樹笉鍙橀€愭棩鎺ㄧ畻</p>
+            <h3>T+0 至 T+10 · 最大可涨空间</h3>
+            <p>T+0：09:15–15:00 为当日盘中；15:00 收盘后自动切到下一交易日。T+1–T+10 按大盘不变逐日推算</p>
           </div>
-          <div class="right"><span class="hint" id="futureBind">褰撳墠锛氣€?/span></div>
+          <div class="right"><span class="hint" id="futureBind">当前：—</span></div>
         </div>
         <div class="future-today" id="futureToday"></div>
         <div class="future-scroll">
           <table class="future-table">
             <thead>
               <tr>
-                <th>浜ゆ槗鏃?/th>
-                <th>鏈€澶у彲娑?/th>
-                <th>10鏃ユ渶澶ф定骞呭亸绂?/th>
-                <th>30鏃ユ渶澶ф定骞呭亸绂?/th>
-                <th>绾︽潫鏉′欢</th>
+                <th>交易日</th>
+                <th>最大可涨</th>
+                <th>10日最大涨幅偏离</th>
+                <th>30日最大涨幅偏离</th>
+                <th>约束条件</th>
               </tr>
             </thead>
             <tbody id="futureBody"></tbody>
           </table>
         </div>
         <div class="future-note" id="futureNote">
-          娴嬬畻鍋囪锛歍+0 鍦?09:15鈥?5:00 涓哄綋鏃ョ洏涓紱15:00 鏀剁洏鍚庤嚜鍔ㄥ垏鍒颁笅涓€浜ゆ槗鏃ャ€俆+1 璧锋寜澶х洏涓嶅彉閫愭棩鎺ㄧ畻锛岃捣鐐逛负褰撴棩鏀剁洏浠凤紱鎸囨暟姣忓ぉ娑ㄨ穼骞呬负 0锛?0/30 鏃ョ獥鍙ｉ殢鏈潵鏃ユ粴鍔紝姣忓ぉ鍦ㄦ渶杩?10/30 涓氦鏄撴棩鍐呮悳绱㈡定骞呮渶澶х殑璧风偣锛涙棫娑ㄥ箙婊氬嚭绐楀彛鍚庣┖闂翠細鎭㈠锛涘啀鎸?10 鏃?+100%銆?0 鏃?+200% 涓庢定鍋滀笂闄愬彇褰撳ぉ鏈€澶у€笺€?% 琛ㄧず褰撳ぉ宸蹭笉鑳藉啀娑紱鑻?0% 浠嶈秺绾匡紝瀵瑰簲鍋忕鍒椾細鏍囩孩骞舵敞鏄庘€滃凡瓒婄嚎鈥濄€傛敞鎰忥細鍋忕鏄尯闂存瘮鍊艰€岄潪姣忔棩娑ㄥ箙鐩稿姞锛涘綋鏇村己鍔跨殑鑰佽捣鐐圭Щ鍑烘粴鍔ㄧ獥鍙ｆ椂锛屽嵆浣垮綋鏃ユ定鍋滐紝鍋忕涔熷彲鑳戒笅闄嶃€備笉鍚?10 鏃ュ悓鍚戝紓鍔ㄦ鏁般€佸仠鐗屼笌鍥涜垗浜斿叆锛屼粎涓虹悊璁虹┖闂淬€?        </div>
+          测算假设：T+0 在 09:15–15:00 为当日盘中；15:00 收盘后自动切到下一交易日。T+1 起按大盘不变逐日推算，起点为当日收盘价；指数每天涨跌幅为 0；10/30 日窗口随未来日滚动，每天在最近 10/30 个交易日内搜索涨幅最大的起点；旧涨幅滚出窗口后空间会恢复；再按 10 日 +100%、30 日 +200% 与涨停上限取当天最大值。0% 表示当天已不能再涨；若 0% 仍越线，对应偏离列会标红并注明“已越线”。注意：偏离是区间比值而非每日涨幅相加；当更强势的老起点移出滚动窗口时，即使当日涨停，偏离也可能下降。不含 10 日同向异动次数、停牌与四舍五入，仅为理论空间。
+        </div>
       </section>
 
       <section class="card rules-card" id="rules">
         <div class="card-h">
           <div>
-            <h3>瑙勫垯鍙ｅ緞涓庤竟鐣?/h3>
-            <p id="ruleSub">娌繁浜ゆ槗鎵€銆婁氦鏄撹鍒欍€嬪紓甯告尝鍔ㄦ潯娆?/p>
+            <h3>规则口径与边界</h3>
+            <p id="ruleSub">沪深交易所《交易规则》异常波动条款</p>
           </div>
-          <div class="right"><span class="hint">褰撳墠鏍囩殑鐨勯€傜敤琛屽凡楂樹寒</span></div>
+          <div class="right"><span class="hint">当前标的的适用行已高亮</span></div>
         </div>
         <div class="rules-body">
           <div class="rule-grid">
             <div class="rule-block">
-              <h4>01 鍙ｅ緞鑼冨洿 <span>鏈〉鍙畻 10/30</span></h4>
-              <p>鏈〉鍙牳瀵?<code>10鏃?+100% / -50%</code> 涓?<code>30鏃?+200% / -70%</code> 涓ゆ潯涓ラ噸寮傚姩浠锋牸绾㈢嚎銆?/p>
-              <p><b>涓嶈绠楋細</b>3 鏃ュ亸绂汇€? 鏃ユ崲鎵嬪紓鍔ㄣ€?0 鏃ュ悓鍚戝紓鍔ㄦ鏁帮紱杩欎簺瑙勫垯浠呬綔涓虹洃绠¤儗鏅紝涓嶅弬涓庢湰椤靛垽瀹氥€?/p>
+              <h4>01 口径范围 <span>本页只算 10/30</span></h4>
+              <p>本页只核对 <code>10日 +100% / -50%</code> 与 <code>30日 +200% / -70%</code> 两条严重异动价格红线。</p>
+              <p><b>不计算：</b>3 日偏离、3 日换手异动、10 日同向异动次数；这些规则仅作为监管背景，不参与本页判定。</p>
             </div>
             <div class="rule-block">
-              <h4>02 涓ラ噸寮傚父娉㈠姩 <span>浠锋牸绾㈢嚎</span></h4>
-              <p><b>鐭湡鏆寸倰锛?/b>10 鏃ユ敹鐩樹环娑ㄨ穼骞呭亸绂诲€肩疮璁¤揪鍒?<code>+100%</code> 鎴?<code>-50%</code>銆?/p>
-              <p><b>涓湡鏆寸倰锛?/b>30 鏃ョ疮璁¤揪鍒?<code>+200%</code> 鎴?<code>-70%</code>銆?/p>
+              <h4>02 严重异常波动 <span>价格红线</span></h4>
+              <p><b>短期暴炒：</b>10 日收盘价涨跌幅偏离值累计达到 <code>+100%</code> 或 <code>-50%</code>。</p>
+              <p><b>中期暴炒：</b>30 日累计达到 <code>+200%</code> 或 <code>-70%</code>。</p>
             </div>
             <div class="rule-block">
-              <h4>03 璁＄畻鍙ｅ緞 <span>鏈〉瀹炵幇</span></h4>
-              <p><b>鍋忕鍊硷細</b><code>(涓偂鍖洪棿娑ㄥ箙 鈭?瀵瑰簲鎸囨暟鍖洪棿娑ㄥ箙) 脳 100</code>锛?0/30 鏃ュ亸绂诲彇绐楀彛鍐呮定骞呮渶澶х殑杩炵画瀛愬尯闂磋捣鐐广€?/p>
-              <p><b>瀵瑰簲鎸囨暟锛?/b>娌富鏉库啋涓婅瘉A鎸囷紙000002锛夛紝娣变富鏉库啋娣辫瘉A鎸囷紝鍒涗笟鏉库啋鍒涗笟鏉跨患锛岀鍒涙澘鈫掔鍒?0銆?/p>
-              <p><b>娑ㄥ仠涓婇檺锛?/b>10%锛堜富鏉匡級/ 20%锛堝垱涓氭澘銆佺鍒涙澘锛? 5%锛圫T锛夛紝浠呯敤浜庢湭鏉?10 鏃ョ┖闂磋〃銆?/p>
+              <h4>03 计算口径 <span>本页实现</span></h4>
+              <p><b>偏离值：</b><code>(个股区间涨幅 − 对应指数区间涨幅) × 100</code>；10/30 日偏离取窗口内涨幅最大的连续子区间起点。</p>
+              <p><b>对应指数：</b>沪主板→上证A指（000002），深主板→深证A指，创业板→创业板综，科创板→科创50。</p>
+              <p><b>涨停上限：</b>10%（主板）/ 20%（创业板、科创板）/ 5%（ST），仅用于未来 10 日空间表。</p>
             </div>
           </div>
 
           <table class="rule-table" style="margin-top:12px">
             <thead>
-              <tr><th>閫傜敤鏉垮潡</th><th>10鏃ヤ弗閲嶉槇鍊?/th><th>30鏃ヤ弗閲嶉槇鍊?/th></tr>
+              <tr><th>适用板块</th><th>10日严重阈值</th><th>30日严重阈值</th></tr>
             </thead>
             <tbody>
-              <tr data-board="shmain"><td>娌競涓绘澘</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
-              <tr data-board="szmain"><td>娣卞競涓绘澘</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
-              <tr data-board="gem"><td>鍒涗笟鏉?/td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
-              <tr data-board="star"><td>绉戝垱鏉?/td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
-              <tr data-board="st"><td>涓绘澘 ST / *ST</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
+              <tr data-board="shmain"><td>沪市主板</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
+              <tr data-board="szmain"><td>深市主板</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
+              <tr data-board="gem"><td>创业板</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
+              <tr data-board="star"><td>科创板</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
+              <tr data-board="st"><td>主板 ST / *ST</td><td>+100% / -50%</td><td>+200% / -70%</td></tr>
             </tbody>
           </table>
 
           <div class="fine">
-            <b>杈圭晫璇存槑锛?/b>鈶?鏁版嵁浼樺厛涓滄柟璐㈠瘜鏃锛堝墠澶嶆潈锛夛紱鍥為€€鑵捐/鏂版氮鏃朵笉鎻愪緵鎹㈡墜鐜囥€傗憽 涓嶆敮鎸佸寳浜ゆ墍锛涗笂甯傚墠 5 鏃ユ棤娑ㄨ穼骞呴檺鍒躲€佸仠鐗屾棩銆佺洏涓复鍋溿€佷氦鏄撴墍璁ゅ畾鐨勫叾浠栧紓甯告儏褰㈡湭鍗曠嫭寤烘ā銆傗憿 鏈〉鍙绠?10鏃?30鏃ヤ环鏍肩孩绾匡紝3鏃ャ€佹崲鎵嬨€佸悓鍚戝紓鍔ㄤ粎浣滆鍒欒儗鏅€傗懀 鏈〉鏄鍒欒绠楀櫒锛屼笉鏋勬垚鎶曡祫寤鸿銆?          </div>
+            <b>边界说明：</b>① 数据优先东方财富日K（前复权）；回退腾讯/新浪时不提供换手率。② 不支持北交所；上市前 5 日无涨跌幅限制、停牌日、盘中临停、交易所认定的其他异常情形未单独建模。③ 本页只计算 10日/30日价格红线，3日、换手、同向异动仅作规则背景。④ 本页是规则计算器，不构成投资建议。
+          </div>
         </div>
       </section>
 
       <div class="foot">
-        <div><b>鏁版嵁锛?/b>涓滄柟璐㈠瘜鍏紑琛屾儏 / 鐩樺彛寮傚姩 / 閲嶇偣鐩戞帶鍚嶅崟锛涙棩K渚濇灏濊瘯涓滆储銆佽吘璁€佹柊娴紱瀹炴椂浠锋潵鑷吘璁?路 涓滆储/鑵捐鍓嶅鏉冿紝鏂版氮鎸夋帴鍙ｅ彛寰?br><b>瑙勫垯锛?/b>娌繁浜ゆ槗鎵€銆婁氦鏄撹鍒欍€嬩弗閲嶅紓甯告尝鍔ㄤ环鏍兼潯娆?/div>
-        <div>鏈伐鍏峰彧鍋氫簨瀹炶绠椾笌鍘嗗彶缁熻锛屼笉棰勬祴銆佷笉鑽愯偂銆佷笉鏋勬垚浠讳綍鎶曡祫寤鸿銆?/div>
+        <div><b>数据：</b>东方财富公开行情 / 盘口异动 / 重点监控名单；日K依次尝试东财、腾讯、新浪；实时价来自腾讯 · 东财/腾讯前复权，新浪按接口口径<br><b>规则：</b>沪深交易所《交易规则》严重异常波动价格条款</div>
+        <div>本工具只做事实计算与历史统计，不预测、不荐股、不构成任何投资建议。</div>
       </div>
     </div>
   </main>

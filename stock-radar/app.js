@@ -1886,7 +1886,7 @@ function poolRowHtml(x){
     '<div class="pr-signal"><span class="evtag '+evCls+'" title="'+esc(ev)+'">'+esc(ev)+'</span><small>'+esc(x.eventTime||"盘中")+'</small></div>'+
     '<div class="pr-dev"><b class="'+(st==="sev"||st==="abn"?"up":st==="near"?"amber":"dm")+'">'+esc(x.nearestValue||"—")+'</b><small>'+esc(x.nearestLabel||"最近红线")+' · '+esc(x.nearestThreshold||"")+(x.nearestRange?'<br>最大区间 '+esc(x.nearestRange):'')+'</small></div>'+
     (pool.mode==="watch" && x.space!=null
-      ? '<div class="pr-progress"><div class="trigger-space"><b class="'+(x.spaceHit?"up":st==="near"?"amber":"dm")+'">'+(x.spaceHit?"已触发":fmtPct(x.space))+'</b><small>'+esc(x.spaceRule)+'</small></div><small class="today-flag">当日触发空间</small></div>'
+      ? '<div class="pr-progress"><div class="trigger-space"><b class="'+(x.spaceHit?"up":st==="near"?"amber":"dm")+'">'+(x.spaceHit?"已触发":fmtPct(x.space))+'</b><small>'+esc(x.spaceRule)+'</small></div><small class="today-flag">当日触发偏离空间</small></div>'
       : '<div class="pr-progress"><div class="pbar"><i style="width:'+barW.toFixed(1)+'%"></i></div><small>'+esc(foot)+'</small><small class="today-flag">'+esc(todayTxt)+'</small></div>')+
     '<div class="pr-act">'+order+
       '<button type="button" class="add'+(watched?" on":"")+'" data-watch-code="'+esc(x.code)+'" data-watch-name="'+esc(x.name||"")+'">'+(watched?(pool.mode==="watch"?"移除":"★ 已关注"):"＋ 关注")+'</button>'+

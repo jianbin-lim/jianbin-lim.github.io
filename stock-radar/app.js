@@ -719,6 +719,17 @@ function nearestCheck(a){
   if(hit) return hit;
   return withData.slice().sort(function(x,y){ return y.progress-x.progress; })[0];
 }
+function triggerSpace(check){
+  if(!check || check.value==null) return null;
+  var line=check.value<0?-(check.id==="d10"?50:70):(check.id==="d10"?100:200);
+  var gain=((1+line/100)/(1+check.value/100)-1)*100;
+  return Math.round(gain*100)/100;
+}
+function triggerRule(check){
+  if(!check) return "";
+  var line=check.value<0?-(check.id==="d10"?50:70):(check.id==="d10"?100:200);
+  return (check.id==="d10"?"10日":"30日")+line+"%";
+}
 function poolStatusOf(a,best){
   var focusHit=a.checks.some(function(c){ return (c.id==="d10"||c.id==="d30")&&c.hit; });
   if(focusHit) return {key:"sev",text:"严重异动"};
@@ -775,6 +786,7 @@ async function evaluatePoolItem(item){
     progress:best?best.progress:0,
     nearestLabel:best?best.label:"—", nearestValue:best?best.valueText:"—",
     nearestThreshold:best?best.thresholdText:"—", nearestRange:fmtRange(bestRange),
+    space:best?triggerSpace(best):null, spaceRule:best?triggerRule(best):"", spaceHit:!!(best&&best.hit),
     foot:best?best.foot:"数据不足", analysis:a, error:""
   };
 }
@@ -784,7 +796,8 @@ function compactPoolItem(x){
     pct:x.pct,price:x.price,event:x.event,eventTime:x.eventTime,
     statusKey:x.statusKey,statusText:x.statusText,progress:x.progress,
     nearestLabel:x.nearestLabel,nearestValue:x.nearestValue,
-    nearestThreshold:x.nearestThreshold,nearestRange:x.nearestRange||"",foot:x.foot,error:x.error||""
+    nearestThreshold:x.nearestThreshold,nearestRange:x.nearestRange||"",
+    space:x.space,spaceRule:x.spaceRule||"",spaceHit:!!x.spaceHit,foot:x.foot,error:x.error||""
   };
 }
 function cachePool(){
@@ -1872,7 +1885,9 @@ function poolRowHtml(x){
     '<div class="pr-quote"><b class="'+cls(pct)+'">'+fmtPct(pct)+'</b><span>'+(x.price==null?"—":"¥"+fmtPrice(x.price))+'</span></div>'+
     '<div class="pr-signal"><span class="evtag '+evCls+'" title="'+esc(ev)+'">'+esc(ev)+'</span><small>'+esc(x.eventTime||"盘中")+'</small></div>'+
     '<div class="pr-dev"><b class="'+(st==="sev"||st==="abn"?"up":st==="near"?"amber":"dm")+'">'+esc(x.nearestValue||"—")+'</b><small>'+esc(x.nearestLabel||"最近红线")+' · '+esc(x.nearestThreshold||"")+(x.nearestRange?'<br>最大区间 '+esc(x.nearestRange):'')+'</small></div>'+
-    '<div class="pr-progress"><div class="pbar"><i style="width:'+barW.toFixed(1)+'%"></i></div><small>'+esc(foot)+'</small><small class="today-flag">'+esc(todayTxt)+'</small></div>'+
+    (pool.mode==="watch" && x.space!=null
+      ? '<div class="pr-progress"><div class="trigger-space"><b class="'+(x.spaceHit?"up":st==="near"?"amber":"dm")+'">'+(x.spaceHit?"已触发":fmtPct(x.space))+'</b><small>'+esc(x.spaceRule)+'</small></div><small class="today-flag">当日触发空间</small></div>'
+      : '<div class="pr-progress"><div class="pbar"><i style="width:'+barW.toFixed(1)+'%"></i></div><small>'+esc(foot)+'</small><small class="today-flag">'+esc(todayTxt)+'</small></div>')+
     '<div class="pr-act">'+order+
       '<button type="button" class="add'+(watched?" on":"")+'" data-watch-code="'+esc(x.code)+'" data-watch-name="'+esc(x.name||"")+'">'+(watched?(pool.mode==="watch"?"移除":"★ 已关注"):"＋ 关注")+'</button>'+
       '<button type="button" class="open" data-open-code="'+esc(x.code)+'">复核 →</button>'+

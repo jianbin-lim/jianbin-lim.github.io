@@ -827,9 +827,13 @@ async function evaluatePoolItem(item){
   var last=a.last;
   var pct=item.pct!=null?item.pct:last.pct;
   var bestRange=best?(best.id==="d10"?a.range10:a.range30):null;
-  var offset=isTimeClosed(nowHm())?1:0;
-  var sp=best?requiredSpaceAt(a,best,offset):{space:null,hit:false};
-  var nsp=best?requiredSpaceAt(a,best,offset+1):{space:null,hit:false};
+  var sp=best?requiredSpaceAt(a,best,0):{space:null,hit:false};
+  // 30 日窗口更长，收盘后旧高点基数的影响更大；若当天空间仍小于涨停幅度，
+  // 用下一交易日的滚动窗口再核一次，避免“上面小于10%、下面+10%却不触发”的矛盾。
+  if(best&&best.id==="d30"&&sp.space!=null&&sp.space<th.limit&&!sp.hit){
+    sp=requiredSpaceAt(a,best,1);
+  }
+  var nsp=best?requiredSpaceAt(a,best,1):{space:null,hit:false};
   return {
     code:item.code, name:name, board:info.board, boardName:info.boardName,
     industry:item.industry||"", pct:pct, price:item.price>0?item.price:last.close,
@@ -1079,6 +1083,14 @@ async function loadPredict(force){
   }finally{
     if(token===predict.token){ predict.loading=false; setPredictBusy(false); renderPool(); }
   }
+}
+async function hydratePredictSpaces(items){
+  await mapLimit(items,2,async function(x){
+    try{
+      var r=await evaluatePoolItem({code:x.code,name:x.name,price:x.price,pct:x.pct});
+      x.space=r.space; x.limit=r.limit;
+    }catch(e){}
+  });
 }
 async function hydratePredictRanges(items,date){
   if(!items.length||!date) return;

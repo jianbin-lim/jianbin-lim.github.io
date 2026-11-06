@@ -34,6 +34,10 @@ function isTimeClosed(hm){
   var t=Number(m[1])*60+Number(m[2]);
   return t>=15*60 || t<9*60+15;
 }
+function nowHm(){
+  var d=new Date();
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
 function fmtPrice(v){
   if(v==null||!Number.isFinite(Number(v))) return "—";
   return Number(v).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -737,18 +741,43 @@ function triggerRule(check){
   var line=check.value<0?-(check.id==="d10"?50:70):(check.id==="d10"?100:200);
   return (check.id==="d10"?"10日":"30日")+line+"%";
 }
-function nextTriggerSpace(a,check){
+function requiredSpaceAt(a,check,offset){
   if(!check||!a||!a.daily||!a.daily.length) return {space:null,hit:false};
   var d=a.daily, last=d[d.length-1];
-  if(last.close==null||last.idxClose==null) return {space:null,hit:false};
+  if(last.close==null||last.idxClose==null||!last.close) return {space:null,hit:false};
   var w=check.id==="d10"?10:30;
   var line=check.value<0?-(check.id==="d10"?50:70):(check.id==="d10"?100:200);
-  var hyp=d.concat([{date:nextTradeDate(last.date),close:last.close,idxClose:last.idxClose}]);
-  var arr=maxIntervalDev(hyp,w);
-  var dev=arr[arr.length-1];
-  if(dev==null) return {space:null,hit:false};
-  var hit=dev>=line;
-  return {space:hit?0:Math.round(((1+line/100)/(1+dev/100)-1)*10000)/100,hit:hit,dev:dev};
+  if(line<=0) return {space:null,hit:false};
+  var price=last.close;
+  function devAt(gainPct){
+    var rows;
+    if(offset){
+      rows=d.slice();
+      var nd=last.date;
+      for(var j=1;j<=offset;j++){
+        nd=nextTradeDate(nd);
+        rows.push({date:nd,close:j===offset?price*(1+gainPct/100):price,idxClose:last.idxClose});
+      }
+    }else{
+      rows=d.slice();
+      rows[rows.length-1]=Object.assign({},last,{close:price*(1+gainPct/100)});
+    }
+    var arr=maxIntervalDev(rows,w);
+    return arr[arr.length-1];
+  }
+  var dev0=devAt(0);
+  if(dev0==null) return {space:null,hit:false};
+  if(dev0>=line) return {space:0,hit:true,dev:dev0};
+  var lo=0, hi=100;
+  while(devAt(hi)<line){
+    hi*=2;
+    if(hi>10000) return {space:null,hit:false,dev:dev0};
+  }
+  for(var k=0;k<60;k++){
+    var mid=(lo+hi)/2;
+    if(devAt(mid)>=line) hi=mid; else lo=mid;
+  }
+  return {space:Math.round(hi*100)/100,hit:false,dev:dev0};
 }
 function poolStatusOf(a,best){
   var focusHit=a.checks.some(function(c){ return (c.id==="d10"||c.id==="d30")&&c.hit; });
@@ -798,7 +827,9 @@ async function evaluatePoolItem(item){
   var last=a.last;
   var pct=item.pct!=null?item.pct:last.pct;
   var bestRange=best?(best.id==="d10"?a.range10:a.range30):null;
-  var nsp=best?nextTriggerSpace(a,best):{space:null,hit:false};
+  var offset=isTimeClosed(nowHm())?1:0;
+  var sp=best?requiredSpaceAt(a,best,offset):{space:null,hit:false};
+  var nsp=best?requiredSpaceAt(a,best,offset+1):{space:null,hit:false};
   return {
     code:item.code, name:name, board:info.board, boardName:info.boardName,
     industry:item.industry||"", pct:pct, price:item.price>0?item.price:last.close,
@@ -807,7 +838,7 @@ async function evaluatePoolItem(item){
     progress:best?best.progress:0,
     nearestLabel:best?best.label:"—", nearestValue:best?best.valueText:"—",
     nearestThreshold:best?best.thresholdText:"—", nearestRange:fmtRange(bestRange),
-    space:best?triggerSpace(best):null, spaceRule:best?triggerRule(best):"", spaceHit:!!(best&&best.hit),
+    space:sp.space, spaceRule:best?triggerRule(best):"", spaceHit:!!sp.hit,
     limit:th.limit,
     nextSpace:nsp.space, nextSpaceHit:!!nsp.hit,
     foot:best?best.foot:"数据不足", analysis:a, error:""

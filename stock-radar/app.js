@@ -723,11 +723,14 @@ function nearestCheck(a){
   }
   return withData.slice().sort(function(x,y){ return gap(x)-gap(y); })[0];
 }
+function spaceFromDev(dev,line){
+  if(dev==null||!isFinite(Number(dev))||!isFinite(Number(line))) return null;
+  return Math.round(((1+Number(line)/100)/(1+Number(dev)/100)-1)*10000)/100;
+}
 function triggerSpace(check){
   if(!check || check.value==null) return null;
   var line=check.value<0?-(check.id==="d10"?50:70):(check.id==="d10"?100:200);
-  var gain=((1+line/100)/(1+check.value/100)-1)*100;
-  return Math.round(gain*100)/100;
+  return spaceFromDev(check.value,line);
 }
 function triggerRule(check){
   if(!check) return "";
@@ -1093,6 +1096,14 @@ function predictRowHtml(x){
   var triggerCls=isNext?"amber":"up";
   var trigPrice=x.triggerPrice!=null?"¥"+fmtPrice(x.triggerPrice):"—";
   var nowPrice=x.price!=null?"¥"+fmtPrice(x.price):"—";
+  var line=Number(x.line)||100;
+  var todaySpace=spaceFromDev(x.dev,line);
+  var nextSpace=isNext&&x.trigger!=null?Number(x.trigger):null;
+  var todayHit=x.dev!=null&&Number(x.dev)>=line;
+  var spaceCell=function(label,val,hit){
+    var tone=hit?"up":"amber";
+    return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'">'+(hit?"已触发":(val==null?"—":fmtPct(val)))+'</b><small>'+esc(x.rule)+'</small></div>';
+  };
   var currentMeta='<small class="pred-x">'+x.days+'日最大涨幅 '+fmtPct(x.dev)+'</small><small class="pred-range">区间 '+esc(x.rangeText||("截至 "+fmtMD(predict.date)))+'</small>';
   var nextMeta=currentMeta;
   if(isNext){
@@ -1112,7 +1123,7 @@ function predictRowHtml(x){
     '</div>'+
     '<div class="pr-quote"><small class="pred-cap quote-cap">今日</small><span class="pq-line"><b class="'+cls(x.pct)+'">'+fmtPct(x.pct)+'</b><span class="price-hl">'+nowPrice+'</span></span>'+currentMeta+'</div>'+
     '<div class="pr-dev"><small class="pred-cap trig-cap">次日</small><span class="pd-line"><b class="'+triggerCls+'">'+fmtPct(x.trigger)+'</b><span class="price-hl">'+trigPrice+'</span></span>'+nextMeta+'</div>'+
-    '<div class="pr-progress"><small class="pred-trigger">触发：'+esc(x.rule)+'</small><div class="pbar"><i style="width:'+Math.max(2,Math.round(x.progress*100))+'%"></i></div><small>'+esc(x.foot)+'</small><small class="today-flag">'+(isNext?"次日预测":"当日预测")+'</small></div>'+
+    '<div class="pr-progress"><div class="trigger-spaces pred-spaces">'+spaceCell("当日",todaySpace,todayHit)+spaceCell("次日",nextSpace,false)+'</div><small class="pred-trigger">触发：'+esc(x.rule)+'</small></div>'+
     '<div class="pr-act">'+
       '<button type="button" class="add'+(watched?" on":"")+'" data-watch-code="'+esc(x.code)+'" data-watch-name="'+esc(x.name)+'">'+(watched?"★ 已关注":"＋ 关注")+'</button>'+
       '<button type="button" class="open" data-open-code="'+esc(x.code)+'">复核 →</button>'+

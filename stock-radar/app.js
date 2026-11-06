@@ -808,6 +808,7 @@ async function evaluatePoolItem(item){
     nearestLabel:best?best.label:"—", nearestValue:best?best.valueText:"—",
     nearestThreshold:best?best.thresholdText:"—", nearestRange:fmtRange(bestRange),
     space:best?triggerSpace(best):null, spaceRule:best?triggerRule(best):"", spaceHit:!!(best&&best.hit),
+    limit:th.limit,
     nextSpace:nsp.space, nextSpaceHit:!!nsp.hit,
     foot:best?best.foot:"数据不足", analysis:a, error:""
   };
@@ -819,6 +820,7 @@ function compactPoolItem(x){
     statusKey:x.statusKey,statusText:x.statusText,progress:x.progress,
     nearestLabel:x.nearestLabel,nearestValue:x.nearestValue,
     nearestThreshold:x.nearestThreshold,nearestRange:x.nearestRange||"",
+    limit:x.limit,
     space:x.space,spaceRule:x.spaceRule||"",spaceHit:!!x.spaceHit,
     nextSpace:x.nextSpace,nextSpaceHit:!!x.nextSpaceHit,foot:x.foot,error:x.error||""
   };
@@ -1009,9 +1011,10 @@ function parsePredict(json){
     if(!(Number(x.a)>0)) return;
     var state=Number(x.o)===2?"next":"today";
     var line=e===6?200:100;
+    var pth=thresholds(board,/ST/i.test(String(x.n||"")));
     out.push({
       code:code, name:String(x.n||code), board:board, boardName:PREDICT_BOARD[Number(x.s)]||BOARD_NAMES[board],
-      pct:Number(x.a), days:days, dev:dev, trigger:trig, line:line,
+      pct:Number(x.a), days:days, dev:dev, trigger:trig, line:line, limit:pth.limit,
       state:state, statusKey:state, statusText:state==="next"?"次日":"当日",
       rule:PREDICT_RULE[e]||"",
       progress:clamp(dev/line,0,1),
@@ -1102,7 +1105,8 @@ function predictRowHtml(x){
   var todayHit=x.dev!=null&&Number(x.dev)>=line;
   var spaceCell=function(label,val,hit){
     var tone=hit?"up":"amber";
-    return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'">'+(hit?"已触发":(val==null?"—":fmtPct(val)))+'</b><small>'+esc(x.rule)+'</small></div>';
+    var over=x.limit&&val!=null&&val>x.limit+0.001;
+    return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(over?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(val)+(over?"*":"")))+'</b><small>'+esc(x.rule)+'</small></div>';
   };
   var currentMeta='<small class="pred-x">'+x.days+'日最大涨幅 '+fmtPct(x.dev)+'</small><small class="pred-range">区间 '+esc(x.rangeText||("截至 "+fmtMD(predict.date)))+'</small>';
   var nextMeta=currentMeta;
@@ -1123,7 +1127,7 @@ function predictRowHtml(x){
     '</div>'+
     '<div class="pr-quote"><small class="pred-cap quote-cap">今日</small><span class="pq-line"><b class="'+cls(x.pct)+'">'+fmtPct(x.pct)+'</b><span class="price-hl">'+nowPrice+'</span></span>'+currentMeta+'</div>'+
     '<div class="pr-dev"><small class="pred-cap trig-cap">次日</small><span class="pd-line"><b class="'+triggerCls+'">'+fmtPct(x.trigger)+'</b><span class="price-hl">'+trigPrice+'</span></span>'+nextMeta+'</div>'+
-    '<div class="pr-progress"><div class="trigger-spaces pred-spaces">'+spaceCell("当日",todaySpace,todayHit)+spaceCell("次日",nextSpace,false)+'</div><small class="pred-trigger">触发：'+esc(x.rule)+'</small></div>'+
+    '<div class="pr-progress"><div class="trigger-spaces pred-spaces">'+spaceCell("当日触发",todaySpace,todayHit)+spaceCell("次日触发",nextSpace,false)+'</div><small class="pred-trigger">触发：'+esc(x.rule)+'</small></div>'+
     '<div class="pr-act">'+
       '<button type="button" class="add'+(watched?" on":"")+'" data-watch-code="'+esc(x.code)+'" data-watch-name="'+esc(x.name)+'">'+(watched?"★ 已关注":"＋ 关注")+'</button>'+
       '<button type="button" class="open" data-open-code="'+esc(x.code)+'">复核 →</button>'+
@@ -1901,10 +1905,11 @@ function poolRowHtml(x){
   var spaceHtml="";
   if(pool.mode==="watch" && x.space!=null){
     var spaceCell=function(label,val,hit){
+      var overLimit=val!=null&&x.limit&&val>x.limit+0.001;
       var tone=hit?"up":(st==="near"?"amber":"dm");
-      return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'">'+(hit?"已触发":(val==null?"—":fmtPct(val)))+'</b><small>'+esc(x.spaceRule)+'</small></div>';
+      return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(overLimit?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(val)+(overLimit?"*":"")))+'</b><small>'+esc(x.spaceRule)+'</small></div>';
     };
-    spaceHtml='<div class="pr-progress"><div class="trigger-spaces">'+spaceCell("当日",x.space,x.spaceHit)+spaceCell("次日",x.nextSpace,x.nextSpaceHit)+'</div></div>';
+    spaceHtml='<div class="pr-progress"><div class="trigger-spaces">'+spaceCell("当日触发",x.space,x.spaceHit)+spaceCell("次日触发",x.nextSpace,x.nextSpaceHit)+'</div></div>';
   }
   var order="";
   if(pool.mode==="watch"){

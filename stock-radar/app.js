@@ -1105,7 +1105,8 @@ function predictRowHtml(x){
   var todayHit=x.dev!=null&&Number(x.dev)>=line;
   var spaceCell=function(label,val,hit){
     var tone=hit?"up":"amber";
-    var over=x.limit&&val!=null&&val>x.limit+0.001;
+    var lim=Number(x.limit)||(/^(30|68)/.test(x.code)?20:10);
+    var over=val!=null&&val>lim+0.001;
     return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(over?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(val)+(over?"*":"")))+'</b><small>'+esc(x.rule)+'</small></div>';
   };
   var currentMeta='<small class="pred-x">'+x.days+'日最大涨幅 '+fmtPct(x.dev)+'</small><small class="pred-range">区间 '+esc(x.rangeText||("截至 "+fmtMD(predict.date)))+'</small>';
@@ -1905,7 +1906,8 @@ function poolRowHtml(x){
   var spaceHtml="";
   if(pool.mode==="watch" && x.space!=null){
     var spaceCell=function(label,val,hit){
-      var overLimit=val!=null&&x.limit&&val>x.limit+0.001;
+      var lim=Number(x.limit)||(/^(30|68)/.test(x.code)?20:10);
+      var overLimit=val!=null&&val>lim+0.001;
       var tone=hit?"up":(st==="near"?"amber":"dm");
       return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(overLimit?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(val)+(overLimit?"*":"")))+'</b><small>'+esc(x.spaceRule)+'</small></div>';
     };

@@ -422,14 +422,14 @@ function exportWatch(){
   var url=URL.createObjectURL(blob);
   var a=document.createElement("a");
   a.href=url;
-  a.download="异动雷达-关注列表-"+dateStamp()+".json";
+  a.download="watchlist.json";
   document.body.appendChild(a);
   a.click();
   a.remove();
   setTimeout(function(){ URL.revokeObjectURL(url); },1500);
-  toast("已导出 "+watchList.length+" 只关注股票。");
+  toast("已下载 watchlist.json；把它放到 index.html 同目录即可跨设备使用。");
 }
-function importWatchData(data){
+function importWatchData(data,silent){
   var list=Array.isArray(data)?data:(data&&Array.isArray(data.watchlist)?data.watchlist:(data&&Array.isArray(data.watch)?data.watch:(data&&Array.isArray(data.items)?data.items:null)));
   if(!list){ toast("JSON 格式不对：需要数组，或包含 watchlist 数组的对象。"); return; }
   var old={};
@@ -467,9 +467,24 @@ function importWatchData(data){
   watchState.items=[];
   watchState.lastAt=0;
   renderWatchCount();
-  setPoolMode("watch");
-  refreshWatch(true);
-  toast("已导入 "+watchList.length+" 只关注"+(skipped?"，跳过 "+skipped+" 条无效记录":"")+"。");
+  if(!silent){
+    setPoolMode("watch");
+    refreshWatch(true);
+    toast("已导入 "+watchList.length+" 只关注"+(skipped?"，跳过 "+skipped+" 条无效记录":"")+"。");
+  }
+}
+async function autoLoadRootWatch(){
+  if(watchList.length) return;
+  try{
+    var r=await fetch("watchlist.json?ts="+Date.now(),{cache:"no-store"});
+    if(!r.ok) return;
+    var data=await r.json();
+    importWatchData(data,true);
+    if(watchList.length){
+      if(pool.mode==="watch") refreshWatch(true);
+      toast("已从 watchlist.json 载入 "+watchList.length+" 只关注。");
+    }
+  }catch(e){}
 }
 async function importWatchFile(file){
   if(!file) return;
@@ -2981,6 +2996,7 @@ function boot(){
   }
   bind();
   loadMonitor(false);
+  autoLoadRootWatch();
   renderPool();
   var p=new URLSearchParams(location.search);
   if(p.get("demo")==="1"){ loadDemo(); return; }

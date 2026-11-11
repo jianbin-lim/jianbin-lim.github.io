@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>异动雷达 · A股异常波动监测</title>
-<link rel="stylesheet" href="styles.css?v=20261112-1">
+<link rel="stylesheet" href="styles.css?v=20261112-2">
 </head>
 <body>
 <div class="app">
@@ -42,6 +42,7 @@
         <button type="button" data-mode="monitor">重点监控<span id="monitorCount">0</span></button>
         <button type="button" data-mode="watch">我的关注</button>
       </div>
+      <div class="watch-groups hidden" id="watchGroups"></div>
       <div class="pool-meta" id="poolMeta">
         <span class="pulse"><i></i><b id="poolStatus">等待扫描</b></span>
         <span id="poolTime">尚未拉取</span>
@@ -209,8 +210,9 @@
   </main>
 </div>
 
+<div class="group-picker hidden" id="groupPicker"></div>
 <div class="toast" id="toast"></div>
 
-<script src="app.js?v=20261112-1"></script>
+<script src="app.js?v=20261112-2"></script>
 </body>
 </html>

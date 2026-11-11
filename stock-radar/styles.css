@@ -836,3 +836,45 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
   .radar-actions{width:100%;flex-wrap:wrap}
   .radar-actions .btn{flex:1;min-width:0}
 }
+
+/* watch groups + drag sort */
+.watch-groups{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:8px 16px;border-bottom:1px solid var(--line);background:#fbfcfe;
+}
+.wg-tabs{display:flex;align-items:center;gap:6px;overflow-x:auto;max-width:100%;padding-bottom:1px}
+.wg-tab,.wg-add{
+  flex:0 0 auto;border:1px solid var(--line2);background:#fff;color:var(--tx2);
+  border-radius:6px;padding:4px 9px;font:600 11px var(--num);line-height:1.5;white-space:nowrap;
+}
+.wg-tab i{font-style:normal;color:var(--dim2);font-weight:400;margin-left:5px;font-size:10px}
+.wg-tab.on{color:var(--amber2);border-color:rgba(169,102,16,.38);background:rgba(169,102,16,.08)}
+.wg-add{color:var(--dim);border-style:dashed;border-color:var(--line2);background:transparent}
+.wg-add:hover,.wg-tab:hover{border-color:var(--amber)}
+.wg-hint{font-size:10px;color:var(--dim2);white-space:nowrap;margin-left:auto}
+.drag-handle{
+  display:inline-flex;align-items:center;justify-content:center;width:18px;height:24px;
+  color:var(--dim2);cursor:grab;font-size:12px;letter-spacing:-2px;user-select:none;
+}
+.drag-handle:active{cursor:grabbing;color:var(--amber2)}
+.pool-row.dragging{opacity:.45}
+.pool-row.drag-over{outline:2px dashed var(--amber);outline-offset:-2px;background:#fffaf0}
+.group-picker{
+  position:fixed;z-index:120;background:#fff;border:1px solid var(--line2);border-radius:9px;
+  box-shadow:0 16px 44px rgba(23,34,51,.18);padding:7px;
+}
+.gp-title{font-size:10px;color:var(--dim2);letter-spacing:.4px;padding:3px 7px 6px}
+.group-picker button{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  border:0;background:transparent;color:var(--tx2);border-radius:6px;padding:7px 8px;
+  font-size:12px;text-align:left;
+}
+.group-picker button:hover{background:#f3f7fc}
+.group-picker button i{font:normal 10px var(--num);color:var(--dim2)}
+.group-picker .gp-new{color:var(--amber2);border-top:1px solid var(--line);border-radius:0 0 6px 6px;margin-top:3px}
+@media(max-width:560px){
+  .watch-groups{padding:7px 11px;gap:6px}
+  .wg-hint{width:100%;margin-left:0;order:3}
+  .drag-handle{width:16px}
+  .pr-act .ord{width:22px}
+}

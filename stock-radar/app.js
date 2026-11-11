@@ -128,6 +128,9 @@ function thresholds(board,isST){
    1b. 异动池 / 关注清单的本地状态
    ========================================================= */
 var WATCH_KEY="abn.watch.v1";
+var WATCH_GROUPS_KEY="abn.watch.groups.v1";
+var WATCH_GROUP_ACTIVE_KEY="abn.watch.group.active.v1";
+var DEFAULT_WATCH_GROUPS=[{id:"g1",name:"分组1"},{id:"g2",name:"分组2"},{id:"g3",name:"分组3"}];
 var POOL_CACHE_KEY="abn.pool.v3";
 var EM_CHANGE_UT="7eea3edcaed734bea9cbfc24409ed989";
 var CHANGE_TYPES=[
@@ -143,6 +146,43 @@ var CHANGE_TYPES=[
 var watchList=[];
 var pool={mode:"near",items:[],scanning:false,source:"",lastAt:0,error:"",done:0,total:0,token:0};
 var watchState={items:[],loading:false,lastAt:0,token:0};
+function readWatchGroups(){
+  try{
+    var a=JSON.parse(localStorage.getItem(WATCH_GROUPS_KEY)||"null");
+    if(Array.isArray(a)){
+      var seen={}, out=[];
+      a.forEach(function(g){
+        var id=String(g&&g.id||"").replace(/[^\w-]/g,"").slice(0,32);
+        var name=String(g&&g.name||"").trim().slice(0,20);
+        if(!id||!name||seen[id]) return;
+        seen[id]=1; out.push({id:id,name:name});
+      });
+      if(out.length) return out;
+    }
+  }catch(e){}
+  return DEFAULT_WATCH_GROUPS.map(function(g){ return {id:g.id,name:g.name}; });
+}
+var watchGroups=readWatchGroups();
+var activeWatchGroup=(function(){
+  try{ var id=localStorage.getItem(WATCH_GROUP_ACTIVE_KEY)||""; if(watchGroups.some(function(g){return g.id===id;})) return id; }catch(e){}
+  return watchGroups[0].id;
+})();
+function saveWatchGroups(){
+  try{ localStorage.setItem(WATCH_GROUPS_KEY,JSON.stringify(watchGroups)); localStorage.setItem(WATCH_GROUP_ACTIVE_KEY,activeWatchGroup); }catch(e){}
+}
+function groupById(id){ return watchGroups.filter(function(g){ return g.id===id; })[0]||null; }
+function groupName(id){ var g=groupById(id); return g?g.name:"未分组"; }
+function activeGroupId(){ return groupById(activeWatchGroup)?activeWatchGroup:watchGroups[0].id; }
+function groupItems(){ var gid=activeGroupId(); return watchList.filter(function(x){ return x.group===gid; }); }
+function activeWatchIndex(code){ var list=groupItems(); for(var i=0;i<list.length;i++) if(list[i].code===code) return i; return -1; }
+function addWatchGroup(name){
+  name=String(name||"").trim().slice(0,20);
+  if(!name) return null;
+  if(watchGroups.some(function(g){ return g.name===name; })){ toast("已有同名分组。"); return null; }
+  if(watchGroups.length>=8){ toast("最多 8 个分组。"); return null; }
+  var g={id:"g"+Date.now().toString(36),name:name};
+  watchGroups.push(g); saveWatchGroups(); renderWatchGroups(); return g;
+}
 var MONITOR_URL="https://mobappconfig.securities.eastmoney.com/emcfg/stock_monitor.json";
 var MONITOR_SEVERE_URL="https://datacenter-web.eastmoney.com/api/data/v1/get";
 var MONITOR_FALLBACK=[
@@ -164,7 +204,7 @@ function readWatch(){
     var a=JSON.parse(localStorage.getItem(WATCH_KEY)||"[]");
     if(!Array.isArray(a)) return [];
     return a.filter(function(x){ return x&&/^\d{6}$/.test(String(x.code||"")); })
-      .map(function(x){ return {code:String(x.code),name:String(x.name||"")}; })
+      .map(function(x){ var gid=String(x.group||""); if(!groupById(gid)) gid=watchGroups[0].id; return {code:String(x.code),name:String(x.name||""),group:gid}; })
       .slice(0,80);
   }catch(e){ return []; }
 }
@@ -173,12 +213,14 @@ function saveWatch(){
 }
 function isWatched(code){ return watchList.some(function(x){ return x.code===code; }); }
 function watchOf(code){ return watchList.filter(function(x){ return x.code===code; })[0]||null; }
-function addWatch(code,name){
+function addWatch(code,name,group){
   if(!code||isWatched(code)) return false;
   if(watchList.length>=80){ toast("关注清单最多 80 只，请先移除一些。"); return false; }
-  watchList.unshift({code:code,name:name||""});
+  var gid=groupById(group)?group:activeGroupId();
+  watchList.unshift({code:code,name:name||"",group:gid});
+  activeWatchGroup=gid;
   saveWatch();
-  toast("已关注 "+(name||code)+"；之后每 60 秒只刷新关注项。");
+  toast("已关注 "+(name||code)+" → "+groupName(gid)+"。");
   return true;
 }
 function removeWatch(code){
@@ -192,34 +234,112 @@ function removeWatch(code){
   }
   return false;
 }
-function toggleWatch(code,name){
-  var on=!isWatched(code);
-  if(on) addWatch(code,name); else removeWatch(code);
-  updateWatchButtons(code);
-  if(pool.mode==="watch") renderPoolList();
-  renderWatchCount();
-  if(on) refreshWatch(true);
+function toggleWatch(code,name,anchor){
+  if(isWatched(code)){
+    removeWatch(code);
+    updateWatchButtons(code);
+    if(pool.mode==="watch") renderPoolList();
+    renderWatchCount();
+    return;
+  }
+  openGroupPicker(code,name||"",anchor);
 }
-function watchIndex(code){
-  for(var i=0;i<watchList.length;i++) if(watchList[i].code===code) return i;
-  return -1;
-}
-function moveWatch(code,dir){
-  var i=watchIndex(code), j;
-  if(i<0) return false;
-  if(dir==="top") j=0;
-  else if(dir==="bottom") j=watchList.length-1;
-  else j=i+Number(dir);
-  if(!isFinite(j)||j<0||j>=watchList.length||j===i) return false;
-  var item=watchList.splice(i,1)[0];
-  watchList.splice(j,0,item);
-  saveWatch();
+function watchIndex(code){ return activeWatchIndex(code); }
+function syncWatchStateOrder(){
   var by={};
   watchState.items.forEach(function(x){ by[x.code]=x; });
   watchState.items=watchList.map(function(w){ return by[w.code]; }).filter(Boolean);
+}
+function afterWatchMove(){
+  saveWatch();
+  syncWatchStateOrder();
+  renderWatchGroups();
   if(pool.mode==="watch") renderPoolList();
-  toast(dir==="top"?"已置顶，下次打开保持此顺序。":dir==="bottom"?"已置底，下次打开保持此顺序。":"已调整关注顺序，下次打开保持此顺序。");
+}
+function moveWatch(code,dir){
+  var list=groupItems(), i=activeWatchIndex(code), targetCode="";
+  if(i<0) return false;
+  if(dir==="top"){ if(i===0) return false; targetCode=list[0].code; }
+  else if(dir==="bottom"){ if(i===list.length-1) return false; targetCode=list[list.length-1].code; }
+  else{
+    var j=i+Number(dir);
+    if(!isFinite(j)||j<0||j>=list.length) return false;
+    targetCode=list[j].code;
+  }
+  var item=watchList[watchIndexGlobal(code)];
+  if(!item||!targetCode) return false;
+  watchList.splice(watchIndexGlobal(code),1);
+  var tp=watchIndexGlobal(targetCode);
+  var after=(dir==="bottom"||Number(dir)>0);
+  watchList.splice(tp+(after?1:0),0,item);
+  afterWatchMove();
+  toast(dir==="top"?"已在本组内置顶。":dir==="bottom"?"已在本组内置底。":"已调整本组顺序。");
   return true;
+}
+function watchIndexGlobal(code){
+  for(var i=0;i<watchList.length;i++) if(watchList[i].code===code) return i;
+  return -1;
+}
+function moveWatchTo(code,targetCode,after){
+  if(!code||!targetCode||code===targetCode) return false;
+  var from=watchIndexGlobal(code); if(from<0) return false;
+  var item=watchList.splice(from,1)[0];
+  var tp=watchIndexGlobal(targetCode);
+  if(tp<0){ watchList.splice(from,0,item); return false; }
+  watchList.splice(tp+(after?1:0),0,item);
+  afterWatchMove();
+  toast("已调整本组顺序，下次打开保持。");
+  return true;
+}
+
+var groupPickerCtx=null;
+function closeGroupPicker(){
+  groupPickerCtx=null;
+  var el=$("#groupPicker"); if(el){ el.classList.add("hidden"); el.innerHTML=""; }
+}
+function openGroupPicker(code,name,anchor){
+  groupPickerCtx={code:code,name:name||""};
+  var el=$("#groupPicker");
+  if(!el){ el=document.createElement("div"); el.id="groupPicker"; el.className="group-picker hidden"; document.body.appendChild(el); }
+  el.innerHTML='<div class="gp-title">添加到分组</div>'+
+    watchGroups.map(function(g){
+      var n=watchList.filter(function(x){ return x.group===g.id; }).length;
+      return '<button type="button" data-pick-group="'+esc(g.id)+'"><span>'+esc(g.name)+'</span><i>'+n+'</i></button>';
+    }).join("")+
+    '<button type="button" class="gp-new" data-pick-new-group="1">＋ 新建分组</button>';
+  el.classList.remove("hidden");
+  var r=anchor&&anchor.getBoundingClientRect?anchor.getBoundingClientRect():null;
+  var w=210, left=r?Math.min(window.innerWidth-w-10,Math.max(8,r.right-w)):Math.max(8,(window.innerWidth-w)/2);
+  var top=r?r.bottom+6:120;
+  el.style.width=w+"px"; el.style.left=left+"px"; el.style.top=top+"px";
+  if(r&&top+el.offsetHeight>window.innerHeight-8) el.style.top=Math.max(8,r.top-el.offsetHeight-6)+"px";
+}
+function addWatchFromPicker(group){
+  if(!groupPickerCtx) return;
+  var ctx=groupPickerCtx;
+  if(addWatch(ctx.code,ctx.name,group)){
+    activeWatchGroup=groupById(group)?group:activeGroupId();
+    saveWatchGroups();
+    closeGroupPicker();
+    updateWatchButtons(ctx.code);
+    renderWatchCount();
+    renderPool();
+    refreshWatch(true);
+  }else{
+    closeGroupPicker();
+  }
+}
+function renderWatchGroups(){
+  var box=$("#watchGroups");
+  if(!box) return;
+  if(pool.mode!=="watch"){ box.classList.add("hidden"); box.innerHTML=""; return; }
+  box.classList.remove("hidden");
+  var total=watchList.length;
+  box.innerHTML='<div class="wg-tabs">'+watchGroups.map(function(g){
+      var n=watchList.filter(function(x){ return x.group===g.id; }).length;
+      return '<button type="button" class="wg-tab'+(g.id===activeGroupId()?" on":"")+'" data-watch-group="'+esc(g.id)+'" title="双击重命名">'+esc(g.name)+'<i>'+n+'</i></button>';
+    }).join("")+'<button type="button" class="wg-add" data-watch-group-add="1" title="新建分组">＋ 分组</button></div>'+
+    '<span class="wg-hint">拖动行首 ⋮⋮ 排序 · 本组 '+groupItems().length+' 只 / 全部 '+total+' 只</span>';
 }
 
 function dateStamp(){
@@ -230,9 +350,11 @@ function exportWatch(){
   if(!watchList.length){ toast("关注列表为空，没有可导出的内容。"); return; }
   var payload={
     app:"异动雷达",
-    version:1,
+    version:2,
     exportedAt:new Date().toISOString(),
-    watchlist:watchList.map(function(x){ return {code:x.code,name:x.name||""}; })
+    groups:watchGroups.map(function(g){ return {id:g.id,name:g.name}; }),
+    activeGroup:activeGroupId(),
+    watchlist:watchList.map(function(x){ return {code:x.code,name:x.name||"",group:x.group}; })
   };
   var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"});
   var url=URL.createObjectURL(blob);
@@ -251,6 +373,18 @@ function importWatchData(data){
   var old={};
   watchList.forEach(function(x){ old[x.code]=x.name||""; });
   var seen={}, out=[], skipped=0;
+  try{
+    if(Array.isArray(data&&data.groups)){
+      data.groups.forEach(function(g){
+        var id=String(g&&g.id||"").replace(/[^\w-]/g,"").slice(0,32);
+        var nm=String(g&&g.name||"").trim().slice(0,20);
+        if(!id||!nm||groupById(id)||watchGroups.some(function(x){return x.name===nm;})) return;
+        if(watchGroups.length>=8) return;
+        watchGroups.push({id:id,name:nm});
+      });
+      saveWatchGroups();
+    }
+  }catch(e){}
   list.forEach(function(x){
     var raw=typeof x==="string"?x:(x&&(x.code||x.symbol)||"");
     raw=String(raw||"").replace(/^(SH|SZ|BJ)/i,"").replace(/\.(SH|SZ|BJ)$/i,"").trim();
@@ -258,12 +392,15 @@ function importWatchData(data){
     try{ parseInput(raw); }catch(e){ skipped++; return; }
     if(seen[raw]) return;
     seen[raw]=1;
-    out.push({code:raw,name:String((x&&x.name)||old[raw]||"")});
+    var gid=String(x&&x.group||"");
+    if(!groupById(gid)) gid=activeGroupId();
+    out.push({code:raw,name:String((x&&x.name)||old[raw]||""),group:gid});
   });
   if(!out.length){ toast("没有可导入的有效 A 股代码。"); return; }
   if(watchList.length && !window.confirm("导入会覆盖当前 "+watchList.length+" 只关注，继续？")) return;
   watchList=out.slice(0,80);
   if(out.length>80) skipped+=out.length-80;
+  if(data&&groupById(String(data.activeGroup||""))) activeWatchGroup=String(data.activeGroup);
   saveWatch();
   watchState.items=[];
   watchState.lastAt=0;
@@ -1959,14 +2096,15 @@ function poolRowHtml(x){
   var order="";
   if(pool.mode==="watch"){
     var wi=watchIndex(x.code);
-    order='<span class="order-btns">'+
-      '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="top" title="置顶" aria-label="置顶"'+(wi<=0?" disabled":"")+'>⇈</button>'+
+    order='<span class="drag-handle" draggable="true" data-drag-code="'+esc(x.code)+'" title="拖动排序">⋮⋮</span>'+
+      '<span class="order-btns">'+
+      '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="top" title="本组置顶" aria-label="本组置顶"'+(wi<=0?" disabled":"")+'>⇈</button>'+
       '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="-1" title="上移" aria-label="上移"'+(wi<=0?" disabled":"")+'>↑</button>'+
-      '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="1" title="下移" aria-label="下移"'+(wi<0||wi>=watchList.length-1?" disabled":"")+'>↓</button>'+
-      '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="bottom" title="置底" aria-label="置底"'+(wi<0||wi>=watchList.length-1?" disabled":"")+'>⇊</button>'+
+      '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="1" title="下移" aria-label="下移"'+(wi<0||wi>=groupItems().length-1?" disabled":"")+'>↓</button>'+
+      '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="bottom" title="本组置底" aria-label="本组置底"'+(wi<0||wi>=groupItems().length-1?" disabled":"")+'>⇊</button>'+
     '</span>';
   }
-  return '<article class="pool-row '+esc(st)+'" data-code="'+esc(x.code)+'">'+
+  return '<article class="pool-row '+esc(st)+'" data-code="'+esc(x.code)+'"'+(pool.mode==="watch"?' draggable="true"':'')+'>'+
     '<div class="pr-id" data-open-code="'+esc(x.code)+'" role="button" tabindex="0" title="复核 '+esc(x.name||x.code)+'">'+
       '<b>'+esc(x.name||x.code)+'</b>'+
       '<span>'+esc(x.code)+' · '+esc(x.boardName||"")+' <i class="pool-badge '+esc(st)+'">'+esc(stText)+'</i>'+extra+'</span>'+
@@ -2011,9 +2149,14 @@ function renderPoolList(){
       box.innerHTML='<div class="pool-empty"><b>正在刷新关注项</b>关注列表每 60 秒自动刷新一次。</div>';
       return;
     }
+    var active=groupItems();
+    if(!active.length){
+      box.innerHTML='<div class="pool-empty"><b>“'+esc(groupName(activeGroupId()))+'”还没有股票</b>点上方其他分组切换，或在添加关注时选择这个分组。</div>';
+      return;
+    }
     var by={};
     watchState.items.forEach(function(x){ by[x.code]=x; });
-    box.innerHTML=watchList.map(function(w){ return by[w.code]; }).filter(Boolean).map(poolRowHtml).join("");
+    box.innerHTML=active.map(function(w){ return by[w.code]; }).filter(Boolean).map(poolRowHtml).join("");
     return;
   }
   var nexts=predict.items.filter(function(x){return x.state==="next";});
@@ -2040,9 +2183,9 @@ function renderPoolMeta(){
     return;
   }
   if(pool.mode==="watch"){
-    status.textContent=watchState.loading?"关注项刷新中":"我的关注";
+    status.textContent=watchState.loading?"关注项刷新中":("我的关注 · "+groupName(activeGroupId()));
     time.textContent=watchState.lastAt?("刷新于 "+poolTime(watchState.lastAt)):"关注后每 60 秒刷新";
-    prog.textContent=watchList.length?("共 "+watchList.length+" 只 · ⇈ 置顶 / ⇊ 置底"):"";
+    prog.textContent=watchList.length?("本组 "+groupItems().length+" 只 / 全部 "+watchList.length+" 只 · 可拖动排序"):"";
     return;
   }
   if(pool.mode==="monitor"){
@@ -2068,6 +2211,7 @@ function renderPoolMeta(){
 function renderPool(){
   renderWatchCount();
   $$("#poolTabs button").forEach(function(b){ b.classList.toggle("on",b.dataset.mode===pool.mode); });
+  renderWatchGroups();
   renderPoolMeta();
   var err=$("#poolError");
   var modeErr=pool.mode==="monitor"?monitor.error:(pool.mode==="near"?predict.error:pool.error);
@@ -2118,7 +2262,7 @@ async function refreshWatch(force){
   var token=++watchState.token;
   watchState.loading=true;
   watchState.items=watchList.map(function(w){
-    return {code:w.code,name:w.name,board:"",boardName:"",pct:null,price:null,event:"个股复核",eventTime:"",statusKey:"pending",statusText:"刷新中",progress:0,nearestValue:"—",nearestLabel:"—",nearestThreshold:"—",foot:"等待计算"};
+    return {code:w.code,name:w.name,group:w.group,board:"",boardName:"",pct:null,price:null,event:"个股复核",eventTime:"",statusKey:"pending",statusText:"刷新中",progress:0,nearestValue:"—",nearestLabel:"—",nearestThreshold:"—",foot:"等待计算"};
   });
   if(pool.mode==="watch") renderPool();
   try{
@@ -2145,7 +2289,7 @@ function updateWatchButtons(code){
   $$('[data-watch-code="'+code+'"]').forEach(function(b){
     var on=isWatched(code);
     b.classList.toggle("on",on);
-    b.textContent=on?"★ 已关注":"＋ 关注";
+    b.textContent=on?(pool.mode==="watch"?"移除":"★ 已关注"):"＋ 关注";
   });
 }
 
@@ -2536,7 +2680,74 @@ function bind(){
     var b=ev.target.closest?ev.target.closest("button[data-mode]"):null;
     if(b) setPoolMode(b.dataset.mode);
   });
+  $("#watchGroups").addEventListener("click",function(ev){
+    var g=ev.target.closest?ev.target.closest("[data-watch-group]"):null;
+    if(g){ ev.preventDefault(); activeWatchGroup=g.dataset.watchGroup; saveWatchGroups(); renderPool(); return; }
+    var a=ev.target.closest?ev.target.closest("[data-watch-group-add]"):null;
+    if(a){
+      ev.preventDefault();
+      var name=window.prompt("新建分组名称（最多 8 个分组）","分组"+(watchGroups.length+1));
+      var created=addWatchGroup(name);
+      if(created){ activeWatchGroup=created.id; saveWatchGroups(); renderPool(); }
+    }
+  });
+  $("#watchGroups").addEventListener("dblclick",function(ev){
+    var g=ev.target.closest?ev.target.closest("[data-watch-group]"):null;
+    if(!g) return;
+    var obj=groupById(g.dataset.watchGroup); if(!obj) return;
+    var name=window.prompt("重命名分组",obj.name);
+    name=String(name||"").trim().slice(0,20);
+    if(!name||name===obj.name) return;
+    if(watchGroups.some(function(x){return x.id!==obj.id&&x.name===name;})){ toast("已有同名分组。"); return; }
+    obj.name=name; saveWatchGroups(); renderPool();
+  });
+  var dragWatchCode="";
+  $("#poolList").addEventListener("dragstart",function(ev){
+    var row=ev.target.closest?ev.target.closest(".pool-row"):null;
+    if(!row) return;
+    var h=ev.target.closest("[data-drag-code]");
+    if(!h && ev.target.closest("button,a,input,select")){ ev.preventDefault(); return; }
+    dragWatchCode=h?h.dataset.dragCode:row.dataset.code;
+    try{ ev.dataTransfer.setData("text/plain",dragWatchCode); ev.dataTransfer.effectAllowed="move"; }catch(e){}
+    row.classList.add("dragging");
+  });
+  $("#poolList").addEventListener("dragover",function(ev){
+    if(!dragWatchCode) return;
+    var row=ev.target.closest?ev.target.closest(".pool-row"):null;
+    if(row){
+      ev.preventDefault();
+      try{ ev.dataTransfer.dropEffect="move"; }catch(e){}
+      $$("#poolList .pool-row").forEach(function(x){ x.classList.toggle("drag-over",x===row); });
+    }
+  });
+  $("#poolList").addEventListener("drop",function(ev){
+    if(!dragWatchCode) return;
+    var row=ev.target.closest?ev.target.closest(".pool-row"):null;
+    if(!row) return;
+    ev.preventDefault();
+    var target=row.dataset.code;
+    var after=false;
+    try{ after=ev.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2; }catch(e){}
+    moveWatchTo(dragWatchCode,target,after);
+    dragWatchCode="";
+    $$("#poolList .pool-row").forEach(function(x){ x.classList.remove("dragging","drag-over"); });
+  });
+  $("#poolList").addEventListener("dragend",function(){
+    dragWatchCode="";
+    $$("#poolList .pool-row").forEach(function(x){ x.classList.remove("dragging","drag-over"); });
+  });
   document.addEventListener("click",function(ev){
+    var pick=ev.target.closest?ev.target.closest("[data-pick-group]"):null;
+    if(pick){ ev.preventDefault(); addWatchFromPicker(pick.dataset.pickGroup); return; }
+    var pickNew=ev.target.closest?ev.target.closest("[data-pick-new-group]"):null;
+    if(pickNew){
+      ev.preventDefault();
+      var nm=window.prompt("新建分组名称","分组"+(watchGroups.length+1));
+      var ng=addWatchGroup(nm);
+      if(ng) addWatchFromPicker(ng.id);
+      return;
+    }
+    if(!ev.target.closest("#groupPicker") && !ev.target.closest("[data-watch-code]")) closeGroupPicker();
     if(!ev.target.closest(".search-box")) hideNameSuggest();
     var nb=ev.target.closest?ev.target.closest("[data-name-code]"):null;
     if(nb){
@@ -2558,7 +2769,7 @@ function bind(){
     var wb=ev.target.closest?ev.target.closest("[data-watch-code]"):null;
     if(wb){
       ev.preventDefault();
-      toggleWatch(wb.dataset.watchCode,wb.dataset.watchName||"");
+      toggleWatch(wb.dataset.watchCode,wb.dataset.watchName||"",wb);
       return;
     }
     var ob=ev.target.closest?ev.target.closest("[data-open-code]"):null;

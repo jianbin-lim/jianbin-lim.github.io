@@ -847,7 +847,13 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
   flex:0 0 auto;border:1px solid var(--line2);background:#fff;color:var(--tx2);
   border-radius:6px;padding:4px 9px;font:600 11px var(--num);line-height:1.5;white-space:nowrap;
 }
+.wg-tab{display:inline-flex;align-items:center;gap:3px}
 .wg-tab i{font-style:normal;color:var(--dim2);font-weight:400;margin-left:5px;font-size:10px}
+.wg-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:3px;
+  color:var(--dim2);font-size:11px;line-height:1;cursor:pointer}
+.wg-icon:hover{background:rgba(169,102,16,.12);color:var(--amber2)}
+.wg-del:hover{background:rgba(217,45,58,.1);color:var(--up)}
+.wg-tab:hover .wg-icon,.wg-tab.on .wg-icon{display:inline-flex}
 .wg-tab.on{color:var(--amber2);border-color:rgba(169,102,16,.38);background:rgba(169,102,16,.08)}
 .wg-add{color:var(--dim);border-style:dashed;border-color:var(--line2);background:transparent}
 .wg-add:hover,.wg-tab:hover{border-color:var(--amber)}
@@ -875,6 +881,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
 @media(max-width:560px){
   .watch-groups{padding:7px 11px;gap:6px}
   .wg-hint{width:100%;margin-left:0;order:3}
+  .wg-icon{display:inline-flex}
   .drag-handle{width:16px}
   .pr-act .ord{width:22px}
 }

@@ -192,6 +192,20 @@ function renameWatchGroup(id){
   if(watchGroups.some(function(x){ return x.id!==id&&x.name===name; })){ toast("已有同名分组。"); return; }
   g.name=name; saveWatchGroups(); closeGroupPicker(); renderPool(); toast("分组已改名。");
 }
+function changeWatchGroup(code,group){
+  var g=groupById(group); if(!g) return;
+  var item=null; watchList.forEach(function(x){ if(x.code===code) item=x; });
+  if(!item){ closeGroupPicker(); return; }
+  if(item.group===group){ closeGroupPicker(); return; }
+  var oldName=groupName(item.group);
+  watchList=watchList.filter(function(x){ return x.code!==code; });
+  var last=-1;
+  watchList.forEach(function(x,i){ if(x.group===group) last=i; });
+  if(last>=0) watchList.splice(last+1,0,item); else watchList.push(item);
+  item.group=group; activeWatchGroup=group;
+  saveWatch(); saveWatchGroups(); closeGroupPicker(); renderPool(); renderWatchCount();
+  toast("已移到「"+g.name+"」，原分组「"+oldName+"」。");
+}
 function deleteWatchGroup(id){
   var g=groupById(id); if(!g) return;
   if(isDefaultGroup(id)){ toast("默认分组不能删除，可以先改名。"); return; }
@@ -319,14 +333,16 @@ function closeGroupPicker(){
   groupPickerCtx=null;
   var el=$("#groupPicker"); if(el){ el.classList.add("hidden"); el.innerHTML=""; }
 }
-function openGroupPicker(code,name,anchor){
-  groupPickerCtx={code:code,name:name||""};
+function openGroupPicker(code,name,anchor,mode){
+  var current=null;
+  watchList.forEach(function(x){ if(x.code===code) current=x.group; });
+  groupPickerCtx={code:code,name:name||"",mode:mode||"add"};
   var el=$("#groupPicker");
   if(!el){ el=document.createElement("div"); el.id="groupPicker"; el.className="group-picker hidden"; document.body.appendChild(el); }
-  el.innerHTML='<div class="gp-title">添加到分组</div>'+
+  el.innerHTML='<div class="gp-title">'+(mode==="move"?'移动“'+esc(name||code)+'”到分组':'添加到分组')+'</div>'+
     watchGroups.map(function(g){
       var n=watchList.filter(function(x){ return x.group===g.id; }).length;
-      return '<button type="button" data-pick-group="'+esc(g.id)+'"><span>'+esc(g.name)+'</span><i>'+n+'</i></button>';
+      return '<button type="button" class="'+(current===g.id?"current":"")+'" data-pick-group="'+esc(g.id)+'"><span>'+esc(g.name)+'</span><i>'+n+(current===g.id?' · 当前':'')+'</i></button>';
     }).join("")+
     '<button type="button" class="gp-new" data-pick-new-group="1">＋ 新建分组</button>';
   el.classList.remove("hidden");
@@ -2123,12 +2139,7 @@ function poolRowHtml(x){
   if(pool.mode==="watch"){
     var wi=watchIndex(x.code);
     order='<span class="drag-handle" draggable="true" data-drag-code="'+esc(x.code)+'" title="拖动排序">⋮⋮</span>'+
-      '<span class="order-btns">'+
-      '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="top" title="本组置顶" aria-label="本组置顶"'+(wi<=0?" disabled":"")+'>⇈</button>'+
-      '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="-1" title="上移" aria-label="上移"'+(wi<=0?" disabled":"")+'>↑</button>'+
-      '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="1" title="下移" aria-label="下移"'+(wi<0||wi>=groupItems().length-1?" disabled":"")+'>↓</button>'+
-      '<button type="button" class="ord" data-move-code="'+esc(x.code)+'" data-move-dir="bottom" title="本组置底" aria-label="本组置底"'+(wi<0||wi>=groupItems().length-1?" disabled":"")+'>⇊</button>'+
-    '</span>';
+      '<button type="button" class="group-move" data-move-group="'+esc(x.code)+'" title="修改分组">⇄ 分组</button>';
   }
   return '<article class="pool-row '+esc(st)+'" data-code="'+esc(x.code)+'"'+(pool.mode==="watch"?' draggable="true"':'')+'>'+
     '<div class="pr-id" data-open-code="'+esc(x.code)+'" role="button" tabindex="0" title="复核 '+esc(x.name||x.code)+'">'+
@@ -2764,13 +2775,22 @@ function bind(){
   });
   document.addEventListener("click",function(ev){
     var pick=ev.target.closest?ev.target.closest("[data-pick-group]"):null;
-    if(pick){ ev.preventDefault(); addWatchFromPicker(pick.dataset.pickGroup); return; }
+    if(pick){
+      ev.preventDefault();
+      var pmode=groupPickerCtx&&groupPickerCtx.mode;
+      if(pmode==="move") changeWatchGroup(groupPickerCtx.code,pick.dataset.pickGroup);
+      else addWatchFromPicker(pick.dataset.pickGroup);
+      return;
+    }
     var pickNew=ev.target.closest?ev.target.closest("[data-pick-new-group]"):null;
     if(pickNew){
       ev.preventDefault();
       var nm=window.prompt("新建分组名称","分组"+(watchGroups.length+1));
       var ng=addWatchGroup(nm);
-      if(ng) addWatchFromPicker(ng.id);
+      if(ng){
+        if(groupPickerCtx&&groupPickerCtx.mode==="move") changeWatchGroup(groupPickerCtx.code,ng.id);
+        else addWatchFromPicker(ng.id);
+      }
       return;
     }
     if(!ev.target.closest("#groupPicker") && !ev.target.closest("[data-watch-code]")) closeGroupPicker();
@@ -2781,6 +2801,13 @@ function bind(){
       $("#codeInput").value=nb.dataset.nameCode;
       hideNameSuggest();
       runAnalyze(nb.dataset.nameCode);
+      return;
+    }
+    var mg=ev.target.closest?ev.target.closest("[data-move-group]"):null;
+    if(mg){
+      ev.preventDefault();
+      var src=watchList.filter(function(x){return x.code===mg.dataset.moveGroup;})[0]||{};
+      openGroupPicker(mg.dataset.moveGroup,src.name||mg.dataset.moveGroup,mg,"move");
       return;
     }
     var mb=ev.target.closest?ev.target.closest("[data-move-code]"):null;

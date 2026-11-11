@@ -163,16 +163,18 @@ function readWatchGroups(){
   return DEFAULT_WATCH_GROUPS.map(function(g){ return {id:g.id,name:g.name}; });
 }
 var watchGroups=readWatchGroups();
+var DEFAULT_WATCH_GROUP_ID=(watchGroups[0]&&watchGroups[0].id)||"g1";
+function defaultGroup(){ return groupById(DEFAULT_WATCH_GROUP_ID)||watchGroups[0]; }
 var activeWatchGroup=(function(){
   try{ var id=localStorage.getItem(WATCH_GROUP_ACTIVE_KEY)||""; if(watchGroups.some(function(g){return g.id===id;})) return id; }catch(e){}
-  return watchGroups[0].id;
+  return DEFAULT_WATCH_GROUP_ID;
 })();
 function saveWatchGroups(){
   try{ localStorage.setItem(WATCH_GROUPS_KEY,JSON.stringify(watchGroups)); localStorage.setItem(WATCH_GROUP_ACTIVE_KEY,activeWatchGroup); }catch(e){}
 }
 function groupById(id){ return watchGroups.filter(function(g){ return g.id===id; })[0]||null; }
 function groupName(id){ var g=groupById(id); return g?g.name:"未分组"; }
-function activeGroupId(){ return groupById(activeWatchGroup)?activeWatchGroup:watchGroups[0].id; }
+function activeGroupId(){ return groupById(activeWatchGroup)?activeWatchGroup:DEFAULT_WATCH_GROUP_ID; }
 function groupItems(){ var gid=activeGroupId(); return watchList.filter(function(x){ return x.group===gid; }); }
 function activeWatchIndex(code){ var list=groupItems(); for(var i=0;i<list.length;i++) if(list[i].code===code) return i; return -1; }
 function addWatchGroup(name){
@@ -183,7 +185,7 @@ function addWatchGroup(name){
   var g={id:"g"+Date.now().toString(36),name:name};
   watchGroups.push(g); saveWatchGroups(); renderWatchGroups(); return g;
 }
-function isDefaultGroup(id){ return !!(watchGroups[0]&&watchGroups[0].id===id); }
+function isDefaultGroup(id){ return id===DEFAULT_WATCH_GROUP_ID; }
 function renameWatchGroup(id){
   var g=groupById(id); if(!g) return;
   var name=window.prompt("重命名分组",g.name);
@@ -206,13 +208,26 @@ function changeWatchGroup(code,group){
   saveWatch(); saveWatchGroups(); closeGroupPicker(); renderPool(); renderWatchCount();
   toast("已移到「"+g.name+"」，原分组「"+oldName+"」。");
 }
+function moveWatchGroup(id,targetId,after){
+  if(!id||!targetId||id===targetId) return false;
+  var from=-1,to=-1;
+  watchGroups.forEach(function(g,i){ if(g.id===id) from=i; if(g.id===targetId) to=i; });
+  if(from<0||to<0) return false;
+  var g=watchGroups.splice(from,1)[0];
+  to=watchGroups.map(function(x){return x.id;}).indexOf(targetId);
+  if(to<0){ watchGroups.push(g); }
+  else watchGroups.splice(to+(after?1:0),0,g);
+  saveWatchGroups(); renderWatchGroups();
+  toast("分组顺序已调整。");
+  return true;
+}
 function deleteWatchGroup(id){
   var g=groupById(id); if(!g) return;
   if(isDefaultGroup(id)){ toast("默认分组不能删除，可以先改名。"); return; }
   var n=watchList.filter(function(x){ return x.group===id; }).length;
-  var msg='删除分组“'+g.name+'”？'+(n?'组内 '+n+' 只股票会移到默认分组“'+watchGroups[0].name+'”。':'该分组当前没有股票。');
+  var def=defaultGroup()||watchGroups[0];
+  var msg='删除分组“'+g.name+'”？'+(n?'组内 '+n+' 只股票会移到默认分组“'+def.name+'”。':'该分组当前没有股票。');
   if(!window.confirm(msg)) return;
-  var def=watchGroups[0];
   watchList.forEach(function(x){ if(x.group===id) x.group=def.id; });
   watchGroups=watchGroups.filter(function(x){ return x.id!==id; });
   if(activeWatchGroup===id) activeWatchGroup=def.id;
@@ -221,6 +236,11 @@ function deleteWatchGroup(id){
 }
 var MONITOR_URL="https://mobappconfig.securities.eastmoney.com/emcfg/stock_monitor.json";
 var MONITOR_SEVERE_URL="https://datacenter-web.eastmoney.com/api/data/v1/get";
+var monitorResets={};
+function recordMonitorReset(code,start){
+  if(!code||!start) return;
+  if(!monitorResets[code]||start>monitorResets[code]) monitorResets[code]=start;
+}
 var MONITOR_FALLBACK=[
   {code:"002724",name:"海洋王",start:"2026-11-02",end:"2026-11-13"},
   {code:"603278",name:"大业股份",start:"2026-11-02",end:"2026-11-13"},
@@ -233,14 +253,14 @@ var monitorSet={};
 var PREDICT_URL="https://dycalchis.eastmoney.com/price-anomaly/list?team=h5&product=EastMoney&client=WAP&version=9001&name=WAP&user=123&pageSize=200&pageNo=1&type=2";
 var predict={items:[],loading:false,lastAt:0,error:"",date:"",token:0};
 var PREDICT_BOARD={1:"沪市主板",4:"创业板",5:"科创板",8:"北交所"};
-var PREDICT_RULE={4:"10日 +100%",5:"10日 -50%",6:"30日 +200%",7:"30日 -70%"};
+var PREDICT_RULE={1:"同向异动",4:"10日 +100%",5:"10日 -50%",6:"30日 +200%",7:"30日 -70%"};
 
 function readWatch(){
   try{
     var a=JSON.parse(localStorage.getItem(WATCH_KEY)||"[]");
     if(!Array.isArray(a)) return [];
     return a.filter(function(x){ return x&&/^\d{6}$/.test(String(x.code||"")); })
-      .map(function(x){ var gid=String(x.group||""); if(!groupById(gid)) gid=watchGroups[0].id; return {code:String(x.code),name:String(x.name||""),group:gid}; })
+      .map(function(x){ var gid=String(x.group||""); if(!groupById(gid)) gid=DEFAULT_WATCH_GROUP_ID; return {code:String(x.code),name:String(x.name||""),group:gid}; })
       .slice(0,80);
   }catch(e){ return []; }
 }
@@ -375,13 +395,13 @@ function renderWatchGroups(){
   var total=watchList.length;
   box.innerHTML='<div class="wg-tabs">'+watchGroups.map(function(g){
       var n=watchList.filter(function(x){ return x.group===g.id; }).length;
-      return '<button type="button" class="wg-tab'+(g.id===activeGroupId()?" on":"")+'" data-watch-group="'+esc(g.id)+'" title="双击重命名">'+
+      return '<button type="button" draggable="true" class="wg-tab'+(g.id===activeGroupId()?" on":"")+'" data-watch-group="'+esc(g.id)+'" data-group-id="'+esc(g.id)+'" title="拖动调整分组顺序；双击重命名">'+
         '<span class="wg-name">'+esc(g.name)+'</span><i>'+n+'</i>'+
         '<span class="wg-icon wg-rename" data-rename-group="'+esc(g.id)+'" title="重命名">✎</span>'+
         (isDefaultGroup(g.id)?'':'<span class="wg-icon wg-del" data-del-group="'+esc(g.id)+'" title="删除分组">×</span>')+
         '</button>';
     }).join("")+'<button type="button" class="wg-add" data-watch-group-add="1" title="新建分组">＋ 分组</button></div>'+
-    '<span class="wg-hint">拖动行首 ⋮⋮ 排序 · 本组 '+groupItems().length+' 只 / 全部 '+total+' 只</span>';
+    '<span class="wg-hint">拖动分组标签排序 · 拖动行首 ⋮⋮ 调整股票 · 本组 '+groupItems().length+' 只 / 全部 '+total+' 只</span>';
 }
 
 function dateStamp(){
@@ -959,7 +979,7 @@ function requiredSpaceAt(a,check,offset){
   return {space:Math.round(hi*100)/100,hit:false,dev:dev0};
 }
 function poolStatusOf(a,best){
-  var focusHit=a.checks.some(function(c){ return (c.id==="d10"||c.id==="d30")&&c.hit; });
+  var focusHit=a.checks.some(function(c){ return c.group==="sev"&&c.hit; });
   if(focusHit) return {key:"sev",text:"严重异动"};
   var p=best?best.progress:0;
   if(p>=0.8) return {key:"near",text:"接近红线"};
@@ -967,6 +987,7 @@ function poolStatusOf(a,best){
   return {key:"ok",text:"未接近"};
 }
 async function evaluatePoolItem(item){
+  await ensureMonitor();
   var info=parseInput(item.code);
   var stock=await loadKlineQuick(info,45);
   if(!stock||!stock.rows.length) throw new Error("个股日K拉取失败");
@@ -982,6 +1003,14 @@ async function evaluatePoolItem(item){
   var maxDate=rows[rows.length-1].date;
   var idxRows=idx.rows.filter(function(r){ return r.date<=maxDate; }).slice(-60);
   if(idxRows.length<8) throw new Error("指数数据不足");
+  var mstart=monitorStartFor(item.code);
+  if(mstart && mstart<=maxDate){
+    rows=rows.filter(function(r){ return r.date>=mstart; });
+    idxRows=idxRows.filter(function(r){ return r.date>=mstart; });
+    if(rows.length<8) throw new Error("监管重置后数据不足");
+  }else{
+    mstart="";
+  }
   // 盘口价已经属于今天：补一根当日K线，让预测按现价而不是昨收计算。
   // 指数当天涨跌在盘口接口里不可得，这里按 0 处理，只用于池内快速预测；
   // 点开个股后会拉腾讯实时指数，结果以个股详情为准。
@@ -1024,6 +1053,7 @@ async function evaluatePoolItem(item){
     space:sp.space, spaceRule:best?triggerRule(best):"", spaceHit:!!sp.hit,
     limit:th.limit,
     nextSpace:nsp.space, nextSpaceHit:!!nsp.hit,
+    monitorReset:a.monitorReset||"",
     foot:best?best.foot:"数据不足", analysis:a, error:""
   };
 }
@@ -1036,7 +1066,7 @@ function compactPoolItem(x){
     nearestThreshold:x.nearestThreshold,nearestRange:x.nearestRange||"",
     limit:x.limit,
     space:x.space,spaceRule:x.spaceRule||"",spaceHit:!!x.spaceHit,
-    nextSpace:x.nextSpace,nextSpaceHit:!!x.nextSpaceHit,foot:x.foot,error:x.error||""
+    nextSpace:x.nextSpace,nextSpaceHit:!!x.nextSpaceHit,monitorReset:x.monitorReset||"",foot:x.foot,error:x.error||""
   };
 }
 function cachePool(){
@@ -1081,6 +1111,7 @@ function parseMonitor(json){
     var name=String(x.STKNAME!=null?x.STKNAME:(x.name||code)).trim();
     if(!board||seen[code]||/^\*?ST/i.test(name)) return;
     var start=ymd(x.VALIDATESTARTDATE), end=ymd(x.VALIDATEENDDATE);
+    if(start && start<=today) recordMonitorReset(code,start);
     if(start && start>today) return;
     if(end && end<today) return;
     seen[code]=1;
@@ -1123,6 +1154,7 @@ function parseSevereMonitor(json){
     var board=boardOf(code);
     if(!board||seen[code]||/^\*?ST/i.test(name)) return;
     var start=ymd(x.PREDICT_START_DATE), end=ymd(x.PREDICT_END_DATE);
+    if(start && start<=today) recordMonitorReset(code,start);
     if(!start||!end||start>today||end<today) return;
     seen[code]=1;
     out.push({
@@ -1143,6 +1175,7 @@ function parseFallbackMonitor(){
   MONITOR_FALLBACK.forEach(function(x){
     var board=boardOf(x.code);
     if(!board||/^\*?ST/i.test(x.name)) return;
+    if(x.start<=today) recordMonitorReset(x.code,x.start);
     if(x.start>today||x.end<today) return;
     out.push({
       code:x.code, name:x.name,
@@ -1173,6 +1206,19 @@ function rebuildMonitorSet(){
   monitor.items.forEach(function(x){ monitorSet[x.code]=true; });
 }
 function isMonitored(code){ return !!monitorSet[code]; }
+function monitorRecord(code){
+  return monitor.items.filter(function(x){ return x.code===code; })[0]||null;
+}
+function monitorStartFor(code){
+  var m=monitorRecord(code);
+  return (m&&m.startDate)||monitorResets[code]||"";
+}
+async function ensureMonitor(){
+  if(monitor.items.length) return;
+  if(!monitor.loading) loadMonitor(false);
+  var t=Date.now();
+  while(monitor.loading && Date.now()-t<4000) await new Promise(function(r){ setTimeout(r,100); });
+}
 async function loadSevereMonitor(){
   var cb="__sm_cb_"+(++CB_SEQ)+"_"+Date.now().toString(36);
   return loadJsonpCallback(severeMonitorUrl(cb),cb,9000);
@@ -1220,19 +1266,20 @@ function parsePredict(json){
     var board=boardOf(code);
     if(!board) return;
     var e=Number(x.e), dev=Number(x.x), trig=Number(x.t), days=Number(x.d);
-    if(!(e===4||e===6)) return;
-    if(!isFinite(dev)||dev<=0||!isFinite(trig)||trig<=0) return;
-    if(!(Number(x.a)>0)) return;
+    if(!(e===1||e===4||e===6)) return;
+    if(!isFinite(dev)||!isFinite(trig)||trig<=0) return;
     var state=Number(x.o)===2?"next":"today";
-    var line=e===6?200:100;
+    var same=e===1;
+    var line=same?100:(e===6?200:100);
     var pth=thresholds(board,/ST/i.test(String(x.n||"")));
     out.push({
       code:code, name:String(x.n||code), board:board, boardName:PREDICT_BOARD[Number(x.s)]||BOARD_NAMES[board],
       pct:Number(x.a), days:days, dev:dev, trigger:trig, line:line, limit:pth.limit,
+      same:same,
       state:state, statusKey:state, statusText:state==="next"?"次日":"当日",
       rule:PREDICT_RULE[e]||"",
-      progress:clamp(dev/line,0,1),
-      foot:"距红线 "+(line-dev).toFixed(2)+"pct"
+      progress:same?0:clamp(dev/line,0,1),
+      foot:same?"同向异动":("距红线 "+(line-dev).toFixed(2)+"pct")
     });
   });
   out.sort(function(a,b){
@@ -1322,18 +1369,23 @@ function predictRowHtml(x){
   var trigPrice=x.triggerPrice!=null?"¥"+fmtPrice(x.triggerPrice):"—";
   var nowPrice=x.price!=null?"¥"+fmtPrice(x.price):"—";
   var line=Number(x.line)||100;
-  var todaySpace=spaceFromDev(x.dev,line);
-  var nextSpace=isNext&&x.trigger!=null?Number(x.trigger):null;
-  var todayHit=x.dev!=null&&Number(x.dev)>=line;
+  var same=!!x.same;
+  var todaySpace=same?(x.trigger!=null?Number(x.trigger):null):spaceFromDev(x.dev,line);
+  var nextSpace=same?(x.trigger!=null?Number(x.trigger):null):(isNext&&x.trigger!=null?Number(x.trigger):null);
+  var todayHit=!same&&x.dev!=null&&Number(x.dev)>=line;
   var spaceCell=function(label,val,hit){
     var tone=hit?"up":"amber";
     var lim=Number(x.limit)||(/^(30|68)/.test(x.code)?20:10);
     var over=val!=null&&val>lim+0.001;
     return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(over?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(val)+(over?"*":"")))+'</b><small>'+esc(x.rule)+'</small></div>';
   };
-  var currentMeta='<small class="pred-x">'+x.days+'日最大涨幅 '+fmtPct(x.dev)+'</small><small class="pred-range">区间 '+esc(x.rangeText||("截至 "+fmtMD(predict.date)))+'</small>';
+  var currentMeta=same
+    ? '<small class="pred-x">'+x.days+'日偏离 '+fmtPct(x.dev)+'</small><small class="pred-range">同向异动</small>'
+    : '<small class="pred-x">'+x.days+'日最大涨幅 '+fmtPct(x.dev)+'</small><small class="pred-range">区间 '+esc(x.rangeText||("截至 "+fmtMD(predict.date)))+'</small>';
   var nextMeta=currentMeta;
-  if(isNext){
+  if(isNext && same){
+    nextMeta='<small class="pred-x">同向异动</small><small class="pred-range">按次数触发</small>';
+  }else if(isNext){
     var nd=nextTradeDate(predict.date);
     var nDays=(Number(x.days)||0)+1;
     var nDev=((1+(Number(x.dev)||0)/100)*(1+(Number(x.trigger)||0)/100)-1)*100;
@@ -1655,10 +1707,21 @@ function analyze(rows,indexRows,opt){
     devCheck("d10","10日最大涨幅",ld.dev10,50,100,"+100% / -50%","10日"),
     devCheck("d30","30日最大涨幅",ld.dev30,70,200,"+200% / -70%","30日")
   ];
+  var repUp=countUp, repDown=countDown;
+  var repVal=Math.max(repUp,repDown), repDir=repUp>=repDown?1:-1;
+  var repHit=repVal>=opt.repeat, repNear=!repHit&&repVal===opt.repeat-1;
+  checks.push({
+    id:"rep",group:"sev",label:"10日同向异动",value:repVal,unit:"次",
+    valueText:String(repVal)+" 次",
+    thresholdText:"主板 4 次 / 创业板·科创板 3 次",
+    hit:repHit,near:repNear,progress:clamp(repVal/opt.repeat,0,1),
+    detail:"近10个交易日"+(repDir>0?"上涨":"下跌")+"同向异动 "+repVal+" 次",
+    foot:repHit?"已触发":"距阈值 "+(opt.repeat-repVal)+" 次"
+  });
 
-  var severeHits=checks.filter(function(c){return (c.id==="d10"||c.id==="d30")&&c.hit;});
+  var severeHits=checks.filter(function(c){return c.group==="sev"&&c.hit;});
   var abnHits=[];
-  var nearChecks=checks.filter(function(c){return c.near&&(c.id==="d10"||c.id==="d30");});
+  var nearChecks=checks.filter(function(c){return c.near;});
   var level,title,desc;
   function hitText(c){
     if(c.id==="turn") return "3日换手 "+(c.value?c.value.toFixed(1)+"x":"—")+"（阈值 30x / 累计 20%）";
@@ -1673,8 +1736,8 @@ function analyze(rows,indexRows,opt){
     desc=abnHits.map(hitText).join("；")+"。达到日常异常波动标准。";
   }else if(nearChecks.length){
     level="watch"; title="接近红线，尚未触发";
-    var nrg=nearChecks[0].id==="d10"?range10:range30;
-    desc="距离最近的一项："+nearChecks[0].label+" "+nearChecks[0].valueText+"（"+fmtRange(nrg)+"），红线 "+nearChecks[0].thresholdText+"。";
+    var nrg=nearChecks[0].id==="d10"?range10:nearChecks[0].id==="d30"?range30:null;
+    desc="距离最近的一项："+nearChecks[0].label+" "+nearChecks[0].valueText+(nrg?"（"+fmtRange(nrg)+"）":"")+"，红线 "+nearChecks[0].thresholdText+"。";
   }else{
     level="ok"; title="当前未触发异常波动";
     desc="10日最大涨幅 "+fmtPct(ld.dev10)+"（"+fmtRange(range10)+"），30日 "+fmtPct(ld.dev30)+"（"+fmtRange(range30)+"）；未触及 10 日 +100% 或 30 日 +200% 严重异动红线。";
@@ -1686,6 +1749,7 @@ function analyze(rows,indexRows,opt){
     daily:daily,events:events,checks:checks,priceEvents:priceEvents,turnEvents:turnEvents,sevEvents:sevEvents,
     last:ld,lastTurn:lastTurn,level:level,title:title,desc:desc,risk:risk,lastEvent:lastEvent,
     countUp:countUp,countDown:countDown,hasTurnover:hasTurnover,missingIndex:missing,
+    monitorReset:opt.monitorReset||"",
     range10:range10,range30:range30,dev30:ld.dev30,future:future,opt:opt
   };
 }
@@ -1832,7 +1896,7 @@ function render(data){
         '<button type="button" class="watch-inline'+(isWatched(q.code)?" on":"")+'" data-watch-code="'+esc(q.code)+'" data-watch-name="'+esc(name)+'">'+(isWatched(q.code)?"★ 已关注":"＋ 关注")+'</button>'+
       '</div>'+
       '<div class="stock-date">'+(rt?(closed?'收盘':'实时')+' <b style="color:var(--tx2)">'+esc(rt.date)+' '+esc(rt.time)+'</b>':'数据截至 <b style="color:var(--tx2)">'+esc(last.date)+'</b>')+' · '+esc(setSourceNote(s))+
-        (rt?(closed?' · 腾讯行情':' · 实时腾讯'):'')+(a.missingIndex&&!rt?' · 指数缺失 '+a.missingIndex+' 日':'')+
+        (rt?(closed?' · 腾讯行情':' · 实时腾讯'):'')+(a.missingIndex&&!rt?' · 指数缺失 '+a.missingIndex+' 日':'')+(a.monitorReset?' · 监管重置 '+esc(a.monitorReset):'')+
       '</div>'+
     '</div>'+
     '<div class="stock-quote">'+
@@ -1861,6 +1925,7 @@ function renderVerdict(a,last){
     ('数据截至 <b>'+esc(last.date)+'</b><br>最近异动 <b>'+(a.lastEvent?esc(a.lastEvent.triggerDate):"—")+'</b>');
   var desc=a.desc;
   if(rt) desc="今日开盘至今 "+fmtPct(rt.openPct)+"（今开 "+fmtPrice(rt.open)+" → "+(closed?"收盘 ":"现价 ")+fmtPrice(rt.price)+"）。"+desc;
+  if(a.monitorReset) desc="已按监管起点 "+a.monitorReset+" 重新计算，之前涨幅不再计入。"+desc;
   $("#verdict").innerHTML=
     '<div class="verdict '+a.level+'">'+
       '<div class="vmark">'+icon+'</div>'+
@@ -1871,7 +1936,7 @@ function renderVerdict(a,last){
 }
 
 function renderMetrics(a){
-  var order=["d10","d30"];
+  var order=["d10","d30","rep"];
   var html=order.map(function(id){
     var c=a.checks.filter(function(x){return x.id===id;})[0];
     if(!c) return "";
@@ -2569,6 +2634,7 @@ async function runAnalyze(code,opts){
   }
   lastQuery=info.code;
   if(!opts.silent) clearError();
+  await ensureMonitor();
   $("#emptyState").classList.add("hidden");
   if(!opts.silent) setLoading(true, opts.demo?"正在生成演示数据…":"正在拉取日K与指数行情…");
   try{
@@ -2586,12 +2652,20 @@ async function runAnalyze(code,opts){
     var maxDate=rows[rows.length-1].date;
     var idxRows=idx.rows.filter(function(r){ return r.date<=maxDate; });
     if(idxRows.length<8) throw new Error("对应指数在截止日前的数据不足。");
+    var mstart=monitorStartFor(info.code);
+    if(mstart && mstart<=maxDate && (!asof || mstart<=asof)){
+      rows=rows.filter(function(r){ return r.date>=mstart; });
+      idxRows=idxRows.filter(function(r){ return r.date>=mstart; });
+      if(rows.length<8) throw new Error("监管重置起点 "+mstart+" 之后不足 8 个交易日，无法计算。");
+    }else{
+      mstart="";
+    }
     var name=stock.name||info.code;
     var isST=/ST/i.test(name);
     var th=thresholds(info.board,isST);
     var opt={
       board:info.board,boardName:info.boardName,isST:isST,
-      abn:th.abn,repeat:th.repeat,limit:th.limit,
+      abn:th.abn,repeat:th.repeat,limit:th.limit,monitorReset:mstart,
       name:name,indexName:idx.name||info.index.name,indexCode:info.index.code
     };
     var priorRows=rows.slice(), priorIdx=idxRows.slice();
@@ -2737,6 +2811,34 @@ function bind(){
     if(!g) return;
     ev.preventDefault();
     renameWatchGroup(g.dataset.watchGroup);
+  });
+  var dragGroupId="";
+  $("#watchGroups").addEventListener("dragstart",function(ev){
+    var g=ev.target.closest?ev.target.closest(".wg-tab"):null;
+    if(!g) return;
+    dragGroupId=g.dataset.groupId||"";
+    try{ ev.dataTransfer.setData("text/plain",dragGroupId); ev.dataTransfer.effectAllowed="move"; }catch(e){}
+    g.classList.add("dragging");
+  });
+  $("#watchGroups").addEventListener("dragover",function(ev){
+    if(!dragGroupId) return;
+    var g=ev.target.closest?ev.target.closest(".wg-tab"):null;
+    if(g){ ev.preventDefault(); try{ ev.dataTransfer.dropEffect="move"; }catch(e){} }
+  });
+  $("#watchGroups").addEventListener("drop",function(ev){
+    if(!dragGroupId) return;
+    var g=ev.target.closest?ev.target.closest(".wg-tab"):null;
+    if(!g) return;
+    ev.preventDefault();
+    var after=false;
+    try{ after=ev.clientX>g.getBoundingClientRect().left+g.getBoundingClientRect().width/2; }catch(e){}
+    moveWatchGroup(dragGroupId,g.dataset.groupId,after);
+    dragGroupId="";
+    $$("#watchGroups .wg-tab").forEach(function(x){ x.classList.remove("dragging"); });
+  });
+  $("#watchGroups").addEventListener("dragend",function(){
+    dragGroupId="";
+    $$("#watchGroups .wg-tab").forEach(function(x){ x.classList.remove("dragging"); });
   });
   var dragWatchCode="";
   $("#poolList").addEventListener("dragstart",function(ev){

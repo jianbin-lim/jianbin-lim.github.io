@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>异动雷达 · A股异常波动监测</title>
-<link rel="stylesheet" href="styles.css?v=20261112-5">
+<link rel="stylesheet" href="styles.css?v=20261112-6">
 </head>
 <body>
 <div class="app">
@@ -48,8 +48,8 @@
         <span id="poolTime">尚未拉取</span>
         <span id="poolProgress"></span>
         <span class="watch-io hidden" id="watchIO">
-          <button type="button" class="pool-refresh" id="btnWatchExport" title="把当前关注列表导出为 JSON 文件">导出关注</button>
-          <button type="button" class="pool-refresh" id="btnWatchImport" title="从 JSON 文件恢复关注列表">导入关注</button>
+          <button type="button" class="pool-refresh watch-io" id="btnWatchExport" title="下载 watchlist.json，可放到 index.html 同目录跨设备使用">⇩ 一键导出</button>
+          <button type="button" class="pool-refresh watch-io" id="btnWatchImport" title="选择 watchlist.json 恢复分组与关注">⇧ 一键导入</button>
           <input type="file" id="watchFile" accept=".json,application/json" hidden>
         </span>
         <button type="button" class="pool-refresh" id="btnPredictRefresh">刷新预测</button>
@@ -214,6 +214,6 @@
 <div class="group-picker hidden" id="groupPicker"></div>
 <div class="toast" id="toast"></div>
 
-<script src="app.js?v=20261112-5"></script>
+<script src="app.js?v=20261112-6"></script>
 </body>
 </html>

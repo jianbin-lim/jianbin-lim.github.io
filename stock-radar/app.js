@@ -183,6 +183,28 @@ function addWatchGroup(name){
   var g={id:"g"+Date.now().toString(36),name:name};
   watchGroups.push(g); saveWatchGroups(); renderWatchGroups(); return g;
 }
+function isDefaultGroup(id){ return !!(watchGroups[0]&&watchGroups[0].id===id); }
+function renameWatchGroup(id){
+  var g=groupById(id); if(!g) return;
+  var name=window.prompt("重命名分组",g.name);
+  name=String(name||"").trim().slice(0,20);
+  if(!name||name===g.name) return;
+  if(watchGroups.some(function(x){ return x.id!==id&&x.name===name; })){ toast("已有同名分组。"); return; }
+  g.name=name; saveWatchGroups(); closeGroupPicker(); renderPool(); toast("分组已改名。");
+}
+function deleteWatchGroup(id){
+  var g=groupById(id); if(!g) return;
+  if(isDefaultGroup(id)){ toast("默认分组不能删除，可以先改名。"); return; }
+  var n=watchList.filter(function(x){ return x.group===id; }).length;
+  var msg='删除分组“'+g.name+'”？'+(n?'组内 '+n+' 只股票会移到默认分组“'+watchGroups[0].name+'”。':'该分组当前没有股票。');
+  if(!window.confirm(msg)) return;
+  var def=watchGroups[0];
+  watchList.forEach(function(x){ if(x.group===id) x.group=def.id; });
+  watchGroups=watchGroups.filter(function(x){ return x.id!==id; });
+  if(activeWatchGroup===id) activeWatchGroup=def.id;
+  saveWatchGroups(); saveWatch(); closeGroupPicker(); renderPool(); renderWatchCount();
+  toast(n?'分组已删除，'+n+' 只股票已移到「'+def.name+'」。':'分组已删除。');
+}
 var MONITOR_URL="https://mobappconfig.securities.eastmoney.com/emcfg/stock_monitor.json";
 var MONITOR_SEVERE_URL="https://datacenter-web.eastmoney.com/api/data/v1/get";
 var MONITOR_FALLBACK=[
@@ -337,7 +359,11 @@ function renderWatchGroups(){
   var total=watchList.length;
   box.innerHTML='<div class="wg-tabs">'+watchGroups.map(function(g){
       var n=watchList.filter(function(x){ return x.group===g.id; }).length;
-      return '<button type="button" class="wg-tab'+(g.id===activeGroupId()?" on":"")+'" data-watch-group="'+esc(g.id)+'" title="双击重命名">'+esc(g.name)+'<i>'+n+'</i></button>';
+      return '<button type="button" class="wg-tab'+(g.id===activeGroupId()?" on":"")+'" data-watch-group="'+esc(g.id)+'" title="双击重命名">'+
+        '<span class="wg-name">'+esc(g.name)+'</span><i>'+n+'</i>'+
+        '<span class="wg-icon wg-rename" data-rename-group="'+esc(g.id)+'" title="重命名">✎</span>'+
+        (isDefaultGroup(g.id)?'':'<span class="wg-icon wg-del" data-del-group="'+esc(g.id)+'" title="删除分组">×</span>')+
+        '</button>';
     }).join("")+'<button type="button" class="wg-add" data-watch-group-add="1" title="新建分组">＋ 分组</button></div>'+
     '<span class="wg-hint">拖动行首 ⋮⋮ 排序 · 本组 '+groupItems().length+' 只 / 全部 '+total+' 只</span>';
 }
@@ -2681,6 +2707,10 @@ function bind(){
     if(b) setPoolMode(b.dataset.mode);
   });
   $("#watchGroups").addEventListener("click",function(ev){
+    var rn=ev.target.closest?ev.target.closest("[data-rename-group]"):null;
+    if(rn){ ev.preventDefault(); ev.stopPropagation(); renameWatchGroup(rn.dataset.renameGroup); return; }
+    var dl=ev.target.closest?ev.target.closest("[data-del-group]"):null;
+    if(dl){ ev.preventDefault(); ev.stopPropagation(); deleteWatchGroup(dl.dataset.delGroup); return; }
     var g=ev.target.closest?ev.target.closest("[data-watch-group]"):null;
     if(g){ ev.preventDefault(); activeWatchGroup=g.dataset.watchGroup; saveWatchGroups(); renderPool(); return; }
     var a=ev.target.closest?ev.target.closest("[data-watch-group-add]"):null;
@@ -2694,12 +2724,8 @@ function bind(){
   $("#watchGroups").addEventListener("dblclick",function(ev){
     var g=ev.target.closest?ev.target.closest("[data-watch-group]"):null;
     if(!g) return;
-    var obj=groupById(g.dataset.watchGroup); if(!obj) return;
-    var name=window.prompt("重命名分组",obj.name);
-    name=String(name||"").trim().slice(0,20);
-    if(!name||name===obj.name) return;
-    if(watchGroups.some(function(x){return x.id!==obj.id&&x.name===name;})){ toast("已有同名分组。"); return; }
-    obj.name=name; saveWatchGroups(); renderPool();
+    ev.preventDefault();
+    renameWatchGroup(g.dataset.watchGroup);
   });
   var dragWatchCode="";
   $("#poolList").addEventListener("dragstart",function(ev){

@@ -855,6 +855,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
 .wg-del:hover{background:rgba(217,45,58,.1);color:var(--up)}
 .wg-tab:hover .wg-icon,.wg-tab.on .wg-icon{display:inline-flex}
 .wg-tab.on{color:var(--amber2);border-color:rgba(169,102,16,.38);background:rgba(169,102,16,.08)}
+.wg-tab.dragging{opacity:.42}
 .wg-add{color:var(--dim);border-style:dashed;border-color:var(--line2);background:transparent}
 .wg-add:hover,.wg-tab:hover{border-color:var(--amber)}
 .wg-hint{font-size:10px;color:var(--dim2);white-space:nowrap;margin-left:auto}

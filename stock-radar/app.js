@@ -21,6 +21,23 @@ function fmt(v,d,sign){
 function fmtPct(v,d,sign){ return v==null?"—":fmt(v,d,sign===false?false:true)+"%"; }
 function fmtMD(date){ return date?String(date).slice(5).replace("-","/"):""; }
 function fmtRange(r){ return r&&r.startDate&&r.endDate?fmtMD(r.startDate)+"–"+fmtMD(r.endDate)+(r.days?" · "+r.days+"日":""):""; }
+function nextTradeDate(date){
+  var d=new Date(String(date||"")+"T00:00:00");
+  if(isNaN(d.getTime())) return "";
+  do{ d.setDate(d.getDate()+1); }while(d.getDay()===0||d.getDay()===6);
+  var m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+  return d.getFullYear()+"-"+m+"-"+day;
+}
+function isTimeClosed(hm){
+  var m=String(hm||"").match(/(\d{1,2}):(\d{2})/);
+  if(!m) return true;
+  var t=Number(m[1])*60+Number(m[2]);
+  return t>=15*60 || t<9*60+15;
+}
+function nowHm(){
+  var d=new Date();
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
 function fmtPrice(v){
   if(v==null||!Number.isFinite(Number(v))) return "—";
   return Number(v).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -704,7 +721,63 @@ function nearestCheck(a){
   if(!withData.length) return null;
   var hit=withData.filter(function(c){ return c.hit; }).sort(function(x,y){ return y.progress-x.progress; })[0];
   if(hit) return hit;
-  return withData.slice().sort(function(x,y){ return y.progress-x.progress; })[0];
+  function gap(c){
+    var line=c.value<0?-(c.id==="d10"?50:70):(c.id==="d10"?100:200);
+    return Math.abs(line-c.value);
+  }
+  return withData.slice().sort(function(x,y){ return gap(x)-gap(y); })[0];
+}
+function spaceFromDev(dev,line){
+  if(dev==null||!isFinite(Number(dev))||!isFinite(Number(line))) return null;
+  return Math.round(((1+Number(line)/100)/(1+Number(dev)/100)-1)*10000)/100;
+}
+function triggerSpace(check){
+  if(!check || check.value==null) return null;
+  var line=check.value<0?-(check.id==="d10"?50:70):(check.id==="d10"?100:200);
+  return spaceFromDev(check.value,line);
+}
+function triggerRule(check){
+  if(!check) return "";
+  var line=check.value<0?-(check.id==="d10"?50:70):(check.id==="d10"?100:200);
+  return (check.id==="d10"?"10日":"30日")+line+"%";
+}
+function requiredSpaceAt(a,check,offset){
+  if(!check||!a||!a.daily||!a.daily.length) return {space:null,hit:false};
+  var d=a.daily, last=d[d.length-1];
+  if(last.close==null||last.idxClose==null||!last.close) return {space:null,hit:false};
+  var w=check.id==="d10"?10:30;
+  var line=check.value<0?-(check.id==="d10"?50:70):(check.id==="d10"?100:200);
+  if(line<=0) return {space:null,hit:false};
+  var price=last.close;
+  function devAt(gainPct){
+    var rows;
+    if(offset){
+      rows=d.slice();
+      var nd=last.date;
+      for(var j=1;j<=offset;j++){
+        nd=nextTradeDate(nd);
+        rows.push({date:nd,close:j===offset?price*(1+gainPct/100):price,idxClose:last.idxClose});
+      }
+    }else{
+      rows=d.slice();
+      rows[rows.length-1]=Object.assign({},last,{close:price*(1+gainPct/100)});
+    }
+    var arr=maxIntervalDev(rows,w);
+    return arr[arr.length-1];
+  }
+  var dev0=devAt(0);
+  if(dev0==null) return {space:null,hit:false};
+  if(dev0>=line) return {space:0,hit:true,dev:dev0};
+  var lo=0, hi=100;
+  while(devAt(hi)<line){
+    hi*=2;
+    if(hi>10000) return {space:null,hit:false,dev:dev0};
+  }
+  for(var k=0;k<60;k++){
+    var mid=(lo+hi)/2;
+    if(devAt(mid)>=line) hi=mid; else lo=mid;
+  }
+  return {space:Math.round(hi*100)/100,hit:false,dev:dev0};
 }
 function poolStatusOf(a,best){
   var focusHit=a.checks.some(function(c){ return (c.id==="d10"||c.id==="d30")&&c.hit; });
@@ -754,6 +827,13 @@ async function evaluatePoolItem(item){
   var last=a.last;
   var pct=item.pct!=null?item.pct:last.pct;
   var bestRange=best?(best.id==="d10"?a.range10:a.range30):null;
+  var sp=best?requiredSpaceAt(a,best,0):{space:null,hit:false};
+  // 30 日窗口更长，收盘后旧高点基数的影响更大；若当天空间仍小于涨停幅度，
+  // 用下一交易日的滚动窗口再核一次，避免“上面小于10%、下面+10%却不触发”的矛盾。
+  if(best&&best.id==="d30"&&sp.space!=null&&sp.space<th.limit&&!sp.hit){
+    sp=requiredSpaceAt(a,best,1);
+  }
+  var nsp=best?requiredSpaceAt(a,best,1):{space:null,hit:false};
   return {
     code:item.code, name:name, board:info.board, boardName:info.boardName,
     industry:item.industry||"", pct:pct, price:item.price>0?item.price:last.close,
@@ -762,6 +842,9 @@ async function evaluatePoolItem(item){
     progress:best?best.progress:0,
     nearestLabel:best?best.label:"—", nearestValue:best?best.valueText:"—",
     nearestThreshold:best?best.thresholdText:"—", nearestRange:fmtRange(bestRange),
+    space:sp.space, spaceRule:best?triggerRule(best):"", spaceHit:!!sp.hit,
+    limit:th.limit,
+    nextSpace:nsp.space, nextSpaceHit:!!nsp.hit,
     foot:best?best.foot:"数据不足", analysis:a, error:""
   };
 }
@@ -771,7 +854,10 @@ function compactPoolItem(x){
     pct:x.pct,price:x.price,event:x.event,eventTime:x.eventTime,
     statusKey:x.statusKey,statusText:x.statusText,progress:x.progress,
     nearestLabel:x.nearestLabel,nearestValue:x.nearestValue,
-    nearestThreshold:x.nearestThreshold,nearestRange:x.nearestRange||"",foot:x.foot,error:x.error||""
+    nearestThreshold:x.nearestThreshold,nearestRange:x.nearestRange||"",
+    limit:x.limit,
+    space:x.space,spaceRule:x.spaceRule||"",spaceHit:!!x.spaceHit,
+    nextSpace:x.nextSpace,nextSpaceHit:!!x.nextSpaceHit,foot:x.foot,error:x.error||""
   };
 }
 function cachePool(){
@@ -960,9 +1046,10 @@ function parsePredict(json){
     if(!(Number(x.a)>0)) return;
     var state=Number(x.o)===2?"next":"today";
     var line=e===6?200:100;
+    var pth=thresholds(board,/ST/i.test(String(x.n||"")));
     out.push({
       code:code, name:String(x.n||code), board:board, boardName:PREDICT_BOARD[Number(x.s)]||BOARD_NAMES[board],
-      pct:Number(x.a), days:days, dev:dev, trigger:trig, line:line,
+      pct:Number(x.a), days:days, dev:dev, trigger:trig, line:line, limit:pth.limit,
       state:state, statusKey:state, statusText:state==="next"?"次日":"当日",
       rule:PREDICT_RULE[e]||"",
       progress:clamp(dev/line,0,1),
@@ -988,15 +1075,22 @@ async function loadPredict(force){
     var r=parsePredict(j);
     predict.items=r.items; predict.date=r.date; predict.lastAt=Date.now();
     renderPool();
-    await hydratePredictRanges(predict.items,predict.date);
-    renderPool();
     // 官方预测只给触发涨幅，触发价需要按现价换算；失败时保留涨幅、触发价显示 —
     await hydratePredictPrices(predict.items);
+    await hydratePredictRanges(predict.items,predict.date);
   }catch(e){
     if(token===predict.token) predict.error=e.message||"严重异动预测拉取失败";
   }finally{
     if(token===predict.token){ predict.loading=false; setPredictBusy(false); renderPool(); }
   }
+}
+async function hydratePredictSpaces(items){
+  await mapLimit(items,2,async function(x){
+    try{
+      var r=await evaluatePoolItem({code:x.code,name:x.name,price:x.price,pct:x.pct});
+      x.space=r.space; x.limit=r.limit;
+    }catch(e){}
+  });
 }
 async function hydratePredictRanges(items,date){
   if(!items.length||!date) return;
@@ -1013,6 +1107,9 @@ async function hydratePredictRanges(items,date){
     var end=dates[endIdx];
     items.forEach(function(x){
       var si=endIdx-(Number(x.days)||0)+1;
+      x.rangeStart=si>=0?dates[si]:"";
+      x.rangeEnd=end;
+      x.rangeDays=Number(x.days)||0;
       x.rangeText=si>=0?(fmtMD(dates[si])+"–"+fmtMD(end)+" · "+x.days+"日"):("截至 "+fmtMD(end)+" · "+x.days+"日");
     });
   }catch(e){}
@@ -1045,15 +1142,36 @@ function predictRowHtml(x){
   var triggerCls=isNext?"amber":"up";
   var trigPrice=x.triggerPrice!=null?"¥"+fmtPrice(x.triggerPrice):"—";
   var nowPrice=x.price!=null?"¥"+fmtPrice(x.price):"—";
+  var line=Number(x.line)||100;
+  var todaySpace=spaceFromDev(x.dev,line);
+  var nextSpace=isNext&&x.trigger!=null?Number(x.trigger):null;
+  var todayHit=x.dev!=null&&Number(x.dev)>=line;
+  var spaceCell=function(label,val,hit){
+    var tone=hit?"up":"amber";
+    var lim=Number(x.limit)||(/^(30|68)/.test(x.code)?20:10);
+    var over=val!=null&&val>lim+0.001;
+    return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(over?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(val)+(over?"*":"")))+'</b><small>'+esc(x.rule)+'</small></div>';
+  };
+  var currentMeta='<small class="pred-x">'+x.days+'日最大涨幅 '+fmtPct(x.dev)+'</small><small class="pred-range">区间 '+esc(x.rangeText||("截至 "+fmtMD(predict.date)))+'</small>';
+  var nextMeta=currentMeta;
+  if(isNext){
+    var nd=nextTradeDate(predict.date);
+    var nDays=(Number(x.days)||0)+1;
+    var nDev=((1+(Number(x.dev)||0)/100)*(1+(Number(x.trigger)||0)/100)-1)*100;
+    var nLine=Number(x.line)||100;
+    if(nDev>nLine-0.02) nDev=nLine-0.02; // 触发价就是红线价，展示红线内的最大偏离
+    var nStart=x.rangeStart?fmtMD(x.rangeStart):"";
+    var nRange=nStart&&nd?(nStart+"–"+fmtMD(nd)+" · "+nDays+"日"):("截至 "+fmtMD(nd||predict.date)+" · "+nDays+"日");
+    nextMeta='<small class="pred-x">'+nDays+'日最大涨幅 '+fmtPct(nDev)+'</small><small class="pred-range">区间 '+esc(nRange)+'</small>';
+  }
   return '<article class="pool-row predict '+(isNext?"next":"today")+'" data-code="'+esc(x.code)+'">'+
     '<div class="pr-id" data-open-code="'+esc(x.code)+'" role="button" tabindex="0" title="复核 '+esc(x.name)+'">'+
       '<b>'+esc(x.name)+'</b>'+
-      '<span>'+esc(x.code)+' · '+esc(x.boardName)+' <i class="pool-badge '+(isNext?"next":"today")+'">'+(isNext?"次日":"当日")+'</i></span>'+
+      '<span>'+esc(x.code)+' · '+esc(x.boardName)+'</span>'+
     '</div>'+
-    '<div class="pr-quote"><b class="'+cls(x.pct)+'">'+fmtPct(x.pct)+'</b><span class="price-hl">'+nowPrice+'</span></div>'+
-    '<div class="pr-signal"><span class="evtag">'+x.days+'日最大涨幅 '+fmtPct(x.dev)+'</span><small>'+esc(x.rule)+'</small><small class="pred-range">区间 '+esc(x.rangeText||("截至 "+fmtMD(predict.date)))+'</small></div>'+
-    '<div class="pr-dev"><span class="pd-line"><b class="'+triggerCls+'">'+fmtPct(x.trigger)+'</b><span class="price-hl">'+trigPrice+'</span></span><small>'+(isNext?"次日":"当日")+'需涨 · 触发'+esc(x.rule)+'</small></div>'+
-    '<div class="pr-progress"><div class="pbar"><i style="width:'+Math.max(2,Math.round(x.progress*100))+'%"></i></div><small>'+esc(x.foot)+'</small><small class="today-flag">'+(isNext?"次日预测":"当日预测")+'</small></div>'+
+    '<div class="pr-quote"><small class="pred-cap quote-cap">今日</small><span class="pq-line"><b class="'+cls(x.pct)+'">'+fmtPct(x.pct)+'</b><span class="price-hl">'+nowPrice+'</span></span>'+currentMeta+'</div>'+
+    '<div class="pr-dev"><small class="pred-cap trig-cap">次日</small><span class="pd-line"><b class="'+triggerCls+'">'+fmtPct(x.trigger)+'</b><span class="price-hl">'+trigPrice+'</span></span>'+nextMeta+'</div>'+
+    '<div class="pr-progress"><div class="trigger-spaces pred-spaces">'+spaceCell("当日触发",todaySpace,todayHit)+spaceCell("次日触发",nextSpace,false)+'</div><small class="pred-trigger">触发：'+esc(x.rule)+'</small></div>'+
     '<div class="pr-act">'+
       '<button type="button" class="add'+(watched?" on":"")+'" data-watch-code="'+esc(x.code)+'" data-watch-name="'+esc(x.name)+'">'+(watched?"★ 已关注":"＋ 关注")+'</button>'+
       '<button type="button" class="open" data-open-code="'+esc(x.code)+'">复核 →</button>'+
@@ -1179,7 +1297,8 @@ function futurePlan(daily,opt){
   var idxLast=daily[last].idxClose;
   var limit=opt.limit||10;
   var out=[];
-  for(var k=1;k<=10;k++){
+  var futureDate=nextTradeDate(daily[last].date);
+  for(var k=1;k<=11;k++){
     var i=last+k;
     var prev=closes[i-1];
     if(prev==null) break;
@@ -1229,13 +1348,14 @@ function futurePlan(daily,opt){
     var over30=d30!=null&&d30>200.05;
     var bindCol=binding.indexOf("10日")===0?"10":(binding.indexOf("30日")===0?"30":"");
     out.push({
-      day:k, date:null, gain:gain, maxPrice:px,
+      day:k, date:futureDate, gain:gain, maxPrice:px,
       dev10:d10, dev30:d30, binding:binding, bindCol:bindCol,
       zeroOver:zeroOver,
       over10:over10, over30:over30, over:over10||over30,
       base10Date:b10?b10.date:"", base10Pct:b10?b10.pct:null,
       base30Date:b30?b30.date:"", base30Pct:b30?b30.pct:null
     });
+    futureDate=nextTradeDate(futureDate);
   }
   return out;
 }
@@ -1520,6 +1640,7 @@ function render(data){
   var prev=rows.length>1?rows[rows.length-2]:null;
   var chg=last.pct;
   var rt=a.realtime;
+  var closed=!!a.closed;
   var name=s.name||data.info.code;
   var isST=/ST/i.test(name);
   var q=data.info;
@@ -1531,12 +1652,12 @@ function render(data){
         '<span class="tag board">'+esc(q.boardName)+'</span>'+(isST?'<span class="tag st">ST / *ST</span>':'')+
         '<button type="button" class="watch-inline'+(isWatched(q.code)?" on":"")+'" data-watch-code="'+esc(q.code)+'" data-watch-name="'+esc(name)+'">'+(isWatched(q.code)?"★ 已关注":"＋ 关注")+'</button>'+
       '</div>'+
-      '<div class="stock-date">'+(rt?'实时 <b style="color:var(--tx2)">'+esc(rt.date)+' '+esc(rt.time)+'</b>':'数据截至 <b style="color:var(--tx2)">'+esc(last.date)+'</b>')+' · '+esc(setSourceNote(s))+
-        (rt?' · 实时腾讯':'')+(a.missingIndex&&!rt?' · 指数缺失 '+a.missingIndex+' 日':'')+
+      '<div class="stock-date">'+(rt?(closed?'收盘':'实时')+' <b style="color:var(--tx2)">'+esc(rt.date)+' '+esc(rt.time)+'</b>':'数据截至 <b style="color:var(--tx2)">'+esc(last.date)+'</b>')+' · '+esc(setSourceNote(s))+
+        (rt?(closed?' · 腾讯行情':' · 实时腾讯'):'')+(a.missingIndex&&!rt?' · 指数缺失 '+a.missingIndex+' 日':'')+
       '</div>'+
     '</div>'+
     '<div class="stock-quote">'+
-      '<div><div class="px">'+fmtPrice(last.close)+'</div><div class="meta">'+(rt?'现价 · 今日实时':'收盘价')+(s.source==="新浪行情"?"":" · 前复权")+'</div></div>'+
+      '<div><div class="px">'+fmtPrice(last.close)+'</div><div class="meta">'+(rt?(closed?'收盘价':'现价 · 今日实时'):'收盘价')+(s.source==="新浪行情"?"":" · 前复权")+'</div></div>'+
       '<div class="chg '+cls(chg)+'">'+fmtPct(chg)+'</div>'+
       '<div class="meta">'+(prev?'前收 '+fmtPrice(prev.close):'')+'<br>'+esc(a.opt.indexName)+' '+fmtPct(last.idxPct)+(rt?'<br>今开 '+fmtPrice(rt.open)+' · 开盘至今 <b class="'+cls(rt.openPct)+'">'+fmtPct(rt.openPct)+'</b>':'')+'</div>'+
     '</div>';
@@ -1551,14 +1672,16 @@ function render(data){
 function renderVerdict(a,last){
   var icon=a.level==="sev"?"!":a.level==="abn"?"!":a.level==="watch"?"·":"✓";
   var rt=a.realtime;
+  var closed=!!a.closed;
   var title=a.title;
   if(rt){
-    title=a.level==="sev"?"当日预测：触发严重异动":a.level==="watch"?"当日预测：接近红线":"当日预测：未触发严重异动";
+    var prefix=closed?"今日收盘：":"当日预测：";
+    title=a.level==="sev"?prefix+"触发严重异动":a.level==="watch"?prefix+"接近红线":prefix+"未触发严重异动";
   }
-  var meta=rt?('实时 <b>'+esc(rt.time)+'</b><br>开盘至今 <b class="'+cls(rt.openPct)+'">'+fmtPct(rt.openPct)+'</b>'):
+  var meta=rt?((closed?'收盘':'实时')+' <b>'+esc(rt.time)+'</b><br>开盘至今 <b class="'+cls(rt.openPct)+'">'+fmtPct(rt.openPct)+'</b>'):
     ('数据截至 <b>'+esc(last.date)+'</b><br>最近异动 <b>'+(a.lastEvent?esc(a.lastEvent.triggerDate):"—")+'</b>');
   var desc=a.desc;
-  if(rt) desc="今日开盘至今 "+fmtPct(rt.openPct)+"（今开 "+fmtPrice(rt.open)+" → 现价 "+fmtPrice(rt.price)+"）。"+desc;
+  if(rt) desc="今日开盘至今 "+fmtPct(rt.openPct)+"（今开 "+fmtPrice(rt.open)+" → "+(closed?"收盘 ":"现价 ")+fmtPrice(rt.price)+"）。"+desc;
   $("#verdict").innerHTML=
     '<div class="verdict '+a.level+'">'+
       '<div class="vmark">'+icon+'</div>'+
@@ -1584,7 +1707,7 @@ function renderMetrics(a){
     if(a.prior && (c.id==="d10"||c.id==="d30")){
       prior='截至昨收 '+fmtPct(c.id==="d10"?a.prior.dev10:a.prior.dev30);
     }
-    var label=c.label+(a.realtime?" · 实时":"");
+    var label=c.label+(a.realtime?(a.closed?" · 收盘":" · 实时"):"");
     var rg=c.id==="d10"?a.range10:c.id==="d30"?a.range30:null;
     return '<article class="metric '+stateCls+'">'+
       '<div class="m-top"><span class="m-label">'+esc(label)+'</span><span class="state '+stateCls+'">'+stateTxt+'</span></div>'+
@@ -1598,31 +1721,117 @@ function renderMetrics(a){
   $("#metrics").innerHTML=html;
 }
 
+function buildTodayRow(a){
+  var daily=a.daily||[], last=daily.length-1;
+  if(last<0) return null;
+  var rt=a.realtime;
+  var closed=rt?isTimeClosed(rt.time):true;
+  var cur=rt&&rt.price!=null?rt.price:daily[last].close;
+  var prev=rt&&rt.prevClose!=null?rt.prevClose:(last>0?daily[last-1].close:cur);
+  var pct=rt&&rt.dayPct!=null?rt.dayPct:(daily[last].pct!=null?daily[last].pct:0);
+  var row={day:0,date:daily[last].date,closed:closed,price:cur,prevClose:prev,currentPct:pct,
+           gain:pct,maxPrice:cur,remaining:0,binding:closed?"已收盘":"涨停上限",bindCol:"",
+           dev10:a.last.dev10,dev30:a.last.dev30,zeroOver:false,over10:false,over30:false};
+  if(closed){
+    row.over10=row.dev10!=null&&row.dev10>100.05;
+    row.over30=row.dev30!=null&&row.dev30>200.05;
+    return row;
+  }
+  var idxLast=daily[last].idxClose;
+  var limit=a.opt&&a.opt.limit||10;
+  var cap=prev*(1+limit/100), maxPx=cap, binding="涨停上限", bindCol="";
+  function minBase(w){
+    var best=null;
+    for(var s=Math.max(1,last-w+1);s<=last;s++){
+      var b=s-1, d=daily[b];
+      if(!d||d.close==null||d.idxClose==null||!d.close||!d.idxClose) continue;
+      if(!best||d.close<best.close) best=d;
+    }
+    return best;
+  }
+  if(idxLast!=null){
+    [[10,100,"10日 +100%","10"],[30,200,"30日 +200%","30"]].forEach(function(t){
+      var base=minBase(t[0]);
+      if(!base) return;
+      var idxRet=(idxLast/base.idxClose-1)*100;
+      var bound=base.close*(1+(t[1]-0.02+idxRet)/100);
+      if(bound<maxPx){ maxPx=bound; binding=t[2]; bindCol=t[3]; }
+    });
+  }
+  row.zeroOver=maxPx<cur;
+  if(row.zeroOver){ maxPx=cur; binding="已越线"; }
+  row.maxPrice=maxPx;
+  row.gain=(maxPx/prev-1)*100;
+  row.remaining=(maxPx/cur-1)*100;
+  row.binding=binding; row.bindCol=bindCol;
+  if(idxLast!=null){
+    [[10,"d10"],[30,"d30"]].forEach(function(t){
+      var b=minBase(t[0]);
+      if(!b) return;
+      row[t[1]]=((maxPx/b.close-1)-(idxLast/b.idxClose-1))*100;
+    });
+  }
+  row.over10=row.dev10!=null&&row.dev10>100.05;
+  row.over30=row.dev30!=null&&row.dev30>200.05;
+  return row;
+}
+function todayRowHtml(a){
+  var t=buildTodayRow(a);
+  if(!t) return "";
+  var gain=t.closed?t.currentPct:t.gain;
+  var maxPx=t.maxPrice;
+  var sub=t.closed?"今日收盘":("当前 "+fmtPct(t.currentPct)+" · 剩余 "+fmtPct(t.remaining));
+  var bind=t.closed?"已收盘":(t.zeroOver?(t.bindCol?(t.bindCol==="10"?"10日线":"30日线")+" · 0% 仍越线":"已越线"):t.binding);
+  var dev10=t.closed?t.dev10:(a.last.dev10!=null?a.last.dev10+(maxPx/t.price-1)*100:null);
+  var dev30=t.closed?t.dev30:(a.last.dev30!=null?a.last.dev30+(maxPx/t.price-1)*100:null);
+  var over10=dev10!=null&&dev10>100.05, over30=dev30!=null&&dev30>200.05;
+  var d10Cls=(t.bindCol==="10"||over10)?"bindline":"";
+  var d30Cls=(t.bindCol==="30"||over30)?"bindline":"";
+  var gainCls=cls(gain);
+  return '<tr class="today-row'+(t.closed?" closed":"")+'">'+
+    '<td><span class="daytag t0">T+0</span><small class="future-extra">'+ (t.closed?"今日收盘":"今日盘中") +' '+fmtMD(t.date)+'</small></td>'+
+    '<td><span class="future-gain"><b class="'+gainCls+'">'+fmtPct(gain)+'</b><span class="price-hl">'+(maxPx!=null?"¥"+fmtPrice(maxPx):"—")+'</span></span><small class="day-sub">'+sub+'</small></td>'+
+    '<td class="'+d10Cls+'">'+fmtPct(dev10)+(over10?'<small class="bindsmall">已越线</small>':'')+'</td>'+
+    '<td class="'+d30Cls+'">'+fmtPct(dev30)+(over30?'<small class="bindsmall">已越线</small>':'')+'</td>'+
+    '<td class="dm">'+esc(bind)+'</td>'+
+  '</tr>';
+}
 function renderFuture(a){
   var body=$("#futureBody"), note=$("#futureNote"), todayEl=$("#futureToday");
   if(!body) return;
   if(todayEl){
     if(a.realtime){
       var rt=a.realtime;
-      todayEl.innerHTML='<span class="ft-label">当日预测</span>'+
-        '<b class="'+(a.level==="sev"?"up":a.level==="watch"?"amber":"g")+'">'+(a.level==="sev"?"触发严重异动":a.level==="watch"?"接近红线":"未触发")+'</b>'+
-        '<span>今开→现价 <b class="'+cls(rt.openPct)+'">'+fmtPct(rt.openPct)+'</b></span>'+
-        '<span>当前 10日 <b>'+fmtPct(a.last.dev10)+'</b>（'+esc(fmtRange(a.range10))+'） / 30日 <b>'+fmtPct(a.last.dev30)+'</b>（'+esc(fmtRange(a.range30))+'）</span>'+
-        '<em>后续以现价为起点；今日实际涨幅已计入当前值，不再按今日理论最大涨幅重算。</em>';
+      var nd0=a.future&&a.future[0]?a.future[0].date:nextTradeDate(a.last.date);
+      if(a.closed){
+        todayEl.innerHTML='<span class="ft-label">T+0 下一交易日</span>'+
+          '<b class="'+(a.level==="sev"?"up":a.level==="watch"?"amber":"g")+'">'+(a.level==="sev"?"今日触发严重异动":a.level==="watch"?"今日接近红线":"今日未触发")+'</b>'+
+          '<span>今日收盘 <b>'+fmtPrice(rt.price)+'</b> <b class="'+cls(rt.dayPct)+'">'+fmtPct(rt.dayPct)+'</b></span>'+
+          '<span>当前 10日 <b>'+fmtPct(a.last.dev10)+'</b>（'+esc(fmtRange(a.range10))+'） / 30日 <b>'+fmtPct(a.last.dev30)+'</b>（'+esc(fmtRange(a.range30))+'）</span>'+
+          '<em>今天已收盘：T+0 已切到 '+fmtMD(nd0)+'；明早 09:15 起按实时重算。</em>';
+      }else{
+        todayEl.innerHTML='<span class="ft-label">T+0 盘中</span>'+
+          '<b class="'+(a.level==="sev"?"up":a.level==="watch"?"amber":"g")+'">'+(a.level==="sev"?"触发严重异动":a.level==="watch"?"接近红线":"未触发")+'</b>'+
+          '<span>今开→现价 <b class="'+cls(rt.openPct)+'">'+fmtPct(rt.openPct)+'</b></span>'+
+          '<span>当前 10日 <b>'+fmtPct(a.last.dev10)+'</b>（'+esc(fmtRange(a.range10))+'） / 30日 <b>'+fmtPct(a.last.dev30)+'</b>（'+esc(fmtRange(a.range30))+'）</span>'+
+          '<em>T+1 起以现价为起点；今日实际涨幅已计入当前值。</em>';
+      }
     }else{
       todayEl.innerHTML='';
     }
   }
-  var assumptions='测算假设：D1 为下一交易日，起点为现价；今日开盘→现价已实现，不重复计入未来空间；指数此后每天涨跌幅为 0；10/30 日窗口随未来日滚动，每天在最近 10/30 个交易日内搜索涨幅最大的起点；旧涨幅滚出窗口后空间会恢复；再按 10 日 +100%、30 日 +200% 与涨停上限取当天最大值。最大可涨后的高亮数字为该日理论收盘价。0% 表示当天已不能再涨；若 0% 仍越线，对应偏离列会标红并注明“已越线”。不含 10 日同向异动次数、停牌与四舍五入，仅为理论空间。';
+  var assumptions='测算假设：T+0 在 09:15–15:00 为当日盘中；15:00 收盘后自动切到下一交易日。T+1 起按大盘不变逐日推算，起点为当日收盘价；指数每天涨跌幅为 0；10/30 日窗口随未来日滚动，每天在最近 10/30 个交易日内搜索涨幅最大的起点；旧涨幅滚出窗口后空间会恢复；再按 10 日 +100%、30 日 +200% 与涨停上限取当天最大值。高亮数字为该日理论收盘价。0% 表示当天已不能再涨；若 0% 仍越线，对应偏离列会标红并注明“已越线”。不含 10 日同向异动次数、停牌与四舍五入，仅为理论空间。';
   if(!a.future||!a.future.length){
     body.innerHTML='<tr><td colspan="5" class="empty">数据不足，至少需要 31 个交易日才能推算</td></tr>';
     if(note) note.textContent=assumptions;
     return;
   }
-  var first=a.future[0], bindEl=$("#futureBind");
+  var first=a.future[0], bindEl=$("#futureBind"), t0=buildTodayRow(a);
   if(bindEl){
-    if(first.zeroOver) bindEl.textContent="当前：卡 "+(first.bindCol==="10"?"10日":"30日")+"线（0% 仍越线）";
-    else if(first.bindCol) bindEl.textContent="当前：卡 "+(first.bindCol==="10"?"10日":"30日")+"线";
+    if(t0&&t0.closed) bindEl.textContent="当前：已收盘 · T+0 为下一交易日";
+    else if(t0&&t0.bindCol) bindEl.textContent="当前：卡 "+(t0.bindCol==="10"?"10日":"30日")+"线"+(t0.zeroOver?"（已越线）":"");
+    else if(first&&first.zeroOver) bindEl.textContent="当前：卡 "+(first.bindCol==="10"?"10日":"30日")+"线（0% 仍越线）";
+    else if(first&&first.bindCol) bindEl.textContent="当前：卡 "+(first.bindCol==="10"?"10日":"30日")+"线";
     else bindEl.textContent="当前：未卡红线";
   }
   if(note){
@@ -1630,11 +1839,15 @@ function renderFuture(a){
     var zero=a.future.filter(function(f){return f.zeroOver;})[0];
     var next=zero?a.future.filter(function(f){return f.day>zero.day&&f.gain>0;})[0]:null;
     var d2=a.future[1];
-    var audit=(d2?'<span class="audit">10日基准取窗口内涨幅最大的起点：D2 取 '+esc(d2.base10Date||"—")+'（当日 '+fmtPct(d2.base10Pct)+'），而不是 10/20。</span> ':'')+
-      (zero?'<span class="audit">D'+zero.day+' 为 0%：已贴住 '+(zero.bindCol==="30"?"30":"10")+' 日线，再涨就会突破，所以这里不能按涨停推演'+(next?'；D'+next.day+' 起旧涨幅滚出窗口，空间恢复。':'。')+'</span> ':'');
+    var audit=(d2?'<span class="audit">10日基准取窗口内涨幅最大的起点：T+'+(d2.day)+' 取 '+esc(d2.base10Date||"—")+'（当日 '+fmtPct(d2.base10Pct)+'），而不是窗口首日。</span> ':'')+
+      (zero?'<span class="audit">T+'+zero.day+' 为 0%：已贴住 '+(zero.bindCol==="30"?"30":"10")+' 日线，再涨就会突破，所以这里不能按涨停推演'+(next?'；T+'+next.day+' 起旧涨幅滚出窗口，空间恢复。':'。')+'</span> ':'');
     note.innerHTML=lead+audit+assumptions;
   }
-  body.innerHTML=a.future.map(function(f){
+  // 15:00 收盘后 T+0 已经切到下一交易日；盘中 T+0 才是今天。
+  var isClosed=!!a.closed;
+  var rows=(a.future||[]).slice(0,isClosed?11:10);
+  body.innerHTML=(isClosed?"":todayRowHtml(a))+rows.map(function(f){
+    var label=isClosed?f.day-1:f.day;
     var gainCls=f.gain>0?"r":"dm";
     var bindTxt=f.zeroOver?((f.bindCol==="10"?"10日线":f.bindCol==="30"?"30日线":f.binding)+" · 0% 仍越线"):f.binding;
     var d10Cls=(f.bindCol==="10"||f.over10)?"bindline":"";
@@ -1643,8 +1856,8 @@ function renderFuture(a){
     var d30Over=f.over30?'<small class="bindsmall">已越线</small>':'';
     var t10='10日基准日 '+(f.base10Date||"—")+(f.base10Pct==null?"":"（当日 "+fmtPct(f.base10Pct)+"）");
     var t30='30日基准日 '+(f.base30Date||"—")+(f.base30Pct==null?"":"（当日 "+fmtPct(f.base30Pct)+"）");
-    return '<tr class="'+(f.zeroOver?"binding":"")+'">'+
-      '<td><span class="daytag">D'+f.day+'</span><small class="future-extra">'+esc(bindTxt)+'</small></td>'+
+    return '<tr class="'+(isClosed&&f.day===1?"today-row ":"")+(f.zeroOver?"binding":"")+'">'+
+      '<td><span class="daytag'+(isClosed&&f.day===1?" t0":"")+'">T+'+label+'</span><small class="future-extra">'+(f.date?fmtMD(f.date)+" · ":"")+esc(bindTxt)+'</small></td>'+
       '<td><span class="future-gain"><b class="'+gainCls+'">'+fmtPct(f.gain)+'</b><span class="price-hl">'+(f.maxPrice!=null?"¥"+fmtPrice(f.maxPrice):"—")+'</span></span></td>'+
       '<td class="'+d10Cls+'" title="'+esc(t10)+'">'+fmtPct(f.dev10)+d10Over+'</td>'+
       '<td class="'+d30Cls+'" title="'+esc(t30)+'">'+fmtPct(f.dev30)+d30Over+'</td>'+
@@ -1733,6 +1946,16 @@ function poolRowHtml(x){
   var todayTxt=st==="sev"?"当日预测：触发":st==="near"?"当日预测：接近":st==="warn"?"当日：监控":"当日预测：未触发";
   var extra="";
   if(isMonitored(x.code)&&st!=="warn") extra+=' <i class="pool-badge warn">监控中</i>';
+  var spaceHtml="";
+  if(pool.mode==="watch" && x.space!=null){
+    var spaceCell=function(label,val,hit){
+      var lim=Number(x.limit)||(/^(30|68)/.test(x.code)?20:10);
+      var overLimit=val!=null&&val>lim+0.001;
+      var tone=hit?"up":(st==="near"?"amber":"dm");
+      return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(overLimit?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(val)+(overLimit?"*":"")))+'</b><small>'+esc(x.spaceRule)+'</small></div>';
+    };
+    spaceHtml='<div class="pr-progress"><div class="trigger-spaces">'+spaceCell("当日触发",x.space,x.spaceHit)+spaceCell("次日触发",x.nextSpace,x.nextSpaceHit)+'</div></div>';
+  }
   var order="";
   if(pool.mode==="watch"){
     var wi=watchIndex(x.code);
@@ -1751,7 +1974,7 @@ function poolRowHtml(x){
     '<div class="pr-quote"><b class="'+cls(pct)+'">'+fmtPct(pct)+'</b><span>'+(x.price==null?"—":"¥"+fmtPrice(x.price))+'</span></div>'+
     '<div class="pr-signal"><span class="evtag '+evCls+'" title="'+esc(ev)+'">'+esc(ev)+'</span><small>'+esc(x.eventTime||"盘中")+'</small></div>'+
     '<div class="pr-dev"><b class="'+(st==="sev"||st==="abn"?"up":st==="near"?"amber":"dm")+'">'+esc(x.nearestValue||"—")+'</b><small>'+esc(x.nearestLabel||"最近红线")+' · '+esc(x.nearestThreshold||"")+(x.nearestRange?'<br>最大区间 '+esc(x.nearestRange):'')+'</small></div>'+
-    '<div class="pr-progress"><div class="pbar"><i style="width:'+barW.toFixed(1)+'%"></i></div><small>'+esc(foot)+'</small><small class="today-flag">'+esc(todayTxt)+'</small></div>'+
+    (spaceHtml || '<div class="pr-progress"><div class="pbar"><i style="width:'+barW.toFixed(1)+'%"></i></div><small>'+esc(foot)+'</small><small class="today-flag">'+esc(todayTxt)+'</small></div>')+
     '<div class="pr-act">'+order+
       '<button type="button" class="add'+(watched?" on":"")+'" data-watch-code="'+esc(x.code)+'" data-watch-name="'+esc(x.name||"")+'">'+(watched?(pool.mode==="watch"?"移除":"★ 已关注"):"＋ 关注")+'</button>'+
       '<button type="button" class="open" data-open-code="'+esc(x.code)+'">复核 →</button>'+
@@ -1793,13 +2016,14 @@ function renderPoolList(){
     box.innerHTML=watchList.map(function(w){ return by[w.code]; }).filter(Boolean).map(poolRowHtml).join("");
     return;
   }
-  if(!predict.items.length){
-    if(predict.loading) box.innerHTML='<div class="pool-empty"><b>正在拉取严重异动预测</b>直接读取东方财富“次日 / 当日”触发测算。</div>';
+  var nexts=predict.items.filter(function(x){return x.state==="next";});
+  if(!nexts.length){
+    if(predict.loading) box.innerHTML='<div class="pool-empty"><b>正在拉取严重异动预测</b>直接读取东方财富“次日”触发测算。</div>';
     else if(predict.error) box.innerHTML='<div class="pool-empty"><b>严重异动预测没有拿到数据</b>点“扫描异动池”重试；也可以直接输入代码复核个股。</div>';
-    else box.innerHTML='<div class="pool-empty"><b>当前没有需要提示的严重异动预测</b>只保留涨幅为正、且次日或当日可能触发 10 日 / 30 日红线的标的。</div>';
+    else box.innerHTML='<div class="pool-empty"><b>当前没有需要提示的严重异动预测</b>只保留涨幅为正、次日可能触发 10 日 / 30 日红线的标的。</div>';
     return;
   }
-  box.innerHTML=predict.items.map(predictRowHtml).join("");
+  box.innerHTML=nexts.map(predictRowHtml).join("");
 }
 function renderPoolMeta(){
   var status=$("#poolStatus"), time=$("#poolTime"), prog=$("#poolProgress");
@@ -1812,8 +2036,7 @@ function renderPoolMeta(){
     status.textContent=predict.loading?"预测拉取中":"严重异动预测";
     time.textContent=predict.error?predict.error:(predict.date?("东财 · "+predict.date+(predict.lastAt?" "+poolTime(predict.lastAt):"")):"尚未拉取");
     var nn=predict.items.filter(function(x){return x.state==="next";}).length;
-    var nt=predict.items.length-nn;
-    prog.textContent=predict.items.length?("次日 "+nn+" · 当日 "+nt):"";
+    prog.textContent=nn?("次日 "+nn+" 只"):"";
     return;
   }
   if(pool.mode==="watch"){
@@ -2220,6 +2443,7 @@ async function runAnalyze(code,opts){
         indexOpenPct:idxQuote.open?((idxQuote.price/idxQuote.open-1)*100):null,
         indexPct:idxQuote.pct
       };
+      analysis.closed=isTimeClosed(quote.time);
     }
     var data={stock:stock,index:idx,rows:rows,info:info,analysis:analysis,demo:false};
     if(seq!==runSeq) return;
@@ -2396,6 +2620,8 @@ function boot(){
   if(p.get("demo")==="1"){ loadDemo(); return; }
   var code=p.get("code");
   if(code){ $("#codeInput").value=code; runAnalyze(code); return; }
+  var mode=p.get("mode");
+  if(mode){ setPoolMode(mode); return; }
   setTimeout(function(){
     if(!document.hidden) scanPool(true);
     $("#codeInput").focus();

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#010607">
+  <meta name="description" content="A cyan 3D point-cloud rabbit hologram projected over Linux kernel source code. WebGL point sprites, scanlines and CRT post-processing.">
+  <link rel="canonical" href="https://jianbin-lim.github.io/hologram-bunny/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="HOLO // RABBIT">
+  <meta property="og:description" content="A cyan 3D point-cloud rabbit hologram projected over Linux kernel source code.">
+  <meta property="og:url" content="https://jianbin-lim.github.io/hologram-bunny/">
+  <meta property="og:image" content="https://jianbin-lim.github.io/hologram-bunny/preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>HOLO // RABBIT — kernel/groups.c</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Layer 1: the kernel source backdrop -->
+    <div class="editor" aria-hidden="true">
+      <div class="editor-chrome">
+        <div class="traffic"><i></i><i></i><i></i></div>
+        <div class="tab">
+          <span class="tab-dot"></span>
+          <span>groups.c</span>
+          <span class="tab-x">×</span>
+        </div>
+        <div class="chrome-meta">
+          <span>linux / kernel</span>
+          <span>v2.6.32</span>
+        </div>
+      </div>
+      <div class="editor-wrap">
+        <div class="editor-column">
+          <div class="editor-gutter" id="gutter"></div>
+          <pre class="editor-code" id="code"></pre>
+        </div>
+        <div class="editor-column" aria-hidden="true">
+          <div class="editor-gutter" id="gutter-right"></div>
+          <pre class="editor-code" id="code-right"></pre>
+        </div>
+      </div>
+      <div class="editor-status">
+        <span class="live">● kernel/groups.c</span>
+        <span>UTF-8</span>
+        <span>LF</span>
+        <span>C</span>
+        <span class="status-right" id="cursor-status">Ln 20, Col 1</span>
+      </div>
+    </div>
+
+    <!-- Layer 2: the hologram -->
+    <main class="stage">
+      <section class="holo" id="holo" aria-label="Cyan 3D point-cloud rabbit hologram">
+        <header class="holo-top">
+          <span class="holo-title">
+            <i class="rec-dot"></i>
+            HOLO_VIEW <span class="sep">/</span> RABBIT.SDF
+          </span>
+          <span class="holo-top-right">
+            <span id="point-label">12.0K PTS</span>
+            <span class="sep">·</span>
+            <span>LIVE</span>
+          </span>
+        </header>
+
+        <div class="holo-body" id="holo-body">
+          <canvas id="scene" aria-label="A cyan point-cloud rabbit slowly rotating behind scanlines"></canvas>
+          <div class="scanbeam" id="scanbeam" aria-hidden="true"></div>
+
+          <div class="holo-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+          <div class="hud hud-a">MESH <b id="mesh-count">12,000</b> PTS</div>
+          <div class="hud hud-b">DEPTH <b id="zoom-label">1.00</b></div>
+          <div class="hud hud-c" id="telemetry">YAW −18.0° / PITCH −1.2°</div>
+          <div class="hud hud-d" id="scan-label">SCAN 042.7</div>
+        </div>
+
+        <footer class="holo-bottom">
+          <span><b>DRAG</b> ROTATE</span>
+          <span><b>SCROLL</b> ZOOM</span>
+          <span><b>SPACE</b> PAUSE</span>
+          <button class="reset" id="reset" type="button">RESET</button>
+        </footer>
+
+        <div class="glitch-slice" aria-hidden="true"></div>
+      </section>
+    </main>
+
+    <!-- Layer 3: monitor finish -->
+    <div class="crt-vignette" aria-hidden="true"></div>
+    <div class="crt-scanlines" aria-hidden="true"></div>
+    <div class="crt-sweep" aria-hidden="true"></div>
+    <div class="crt-noise" aria-hidden="true"></div>
+  </div>
+
+  <script src="rabbit-points.js"></script>
+  <script src="code-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

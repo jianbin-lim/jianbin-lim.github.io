@@ -378,6 +378,10 @@ def build(date: str, rules: list[dict], use_cache: bool, live: bool = True) -> d
             buy_total = sum(v["buy"] for v in unique.values())
             sell_total = sum(v["sell"] for v in unique.values())
             net = buy_total - sell_total
+            # 浮点求和末位（1e-8 级）随平台不同，会把版本指纹顶掉；统一取整到分
+            buy_total = round(buy_total, 2)
+            sell_total = round(sell_total, 2)
+            net = round(net, 2)
 
         stock = {
             "code": code,

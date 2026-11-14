@@ -43,6 +43,7 @@ jobs:
 
       - name: 提交
         run: |
+          DATE=$(python -c "import json;print(json.load(open('lhb-radar/version.json',encoding='utf-8'))['date'])")
           git config user.name "lhb-radar-bot"
           git config user.email "actions@users.noreply.github.com"
           git add -A lhb-radar
@@ -50,5 +51,5 @@ jobs:
             echo "数据无变化，跳过提交"
             exit 0
           fi
-          git commit -m "chore(lhb-radar): 更新 $(TZ=Asia/Shanghai date +%F) 龙虎榜"
+          git commit -m "chore(lhb-radar): 更新 ${DATE} 龙虎榜"
           git push

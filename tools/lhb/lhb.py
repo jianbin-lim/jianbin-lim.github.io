@@ -403,7 +403,8 @@ def build(date: str, rules: list[dict], use_cache: bool, live: bool = True) -> d
         )
     )
 
-    total_net = sum(s["net"] for s in stocks)
+    # 求和顺序不同会让浮点末位有 1e-7 级差异，进而把版本指纹顶掉、产生空提交
+    total_net = round(sum(s["net"] for s in stocks), 2)
     now = datetime.now()
     today = now.strftime("%Y-%m-%d")
     if not live or date == today:
@@ -412,7 +413,7 @@ def build(date: str, rules: list[dict], use_cache: bool, live: bool = True) -> d
     elif now.weekday() >= 5:
         stale, hint = True, "今日休市"
     else:
-        stale, hint = True, f"{today} 数据未出（交易日 16:30 后更新）"
+        stale, hint = True, f"{today} 数据未出（交易日 18:00 后更新）"
     return {
         "date": date,
         "today": today,
@@ -836,7 +837,7 @@ const isHttp = (typeof location !== "undefined") && location.protocol.indexOf("h
   const live = $("#live");
   if (!live) return;
   if (DATA.stale){
-    live.innerHTML = `<span class="stale" title="龙虎榜在交易日 16:30–17:00 之后更新">${esc(DATA.hint || (DATA.today + " 数据未出"))}，当前为 ${esc(DATA.date)}</span>`;
+    live.innerHTML = `<span class="stale" title="龙虎榜在交易日 18:00 左右才出齐">${esc(DATA.hint || (DATA.today + " 数据未出"))}，当前为 ${esc(DATA.date)}</span>`;
   } else if (isHttp){
     live.innerHTML = `<span class="dim" style="font-size:12px" title="页面每 60 秒检查一次版本号，有新版自动刷新；龙虎榜收盘后 18:00 左右才齐，每日 18:40 起定时生成"><span class="dot"></span>自动刷新中 · 每 60 秒检查</span>`;
   }

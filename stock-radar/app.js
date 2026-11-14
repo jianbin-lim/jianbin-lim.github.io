@@ -236,10 +236,11 @@ function deleteWatchGroup(id){
 }
 var MONITOR_URL="https://mobappconfig.securities.eastmoney.com/emcfg/stock_monitor.json";
 var MONITOR_SEVERE_URL="https://datacenter-web.eastmoney.com/api/data/v1/get";
-var monitorResets={};
-function recordMonitorReset(code,start){
+var monitorResets={}, monitorEnds={};
+function recordMonitorReset(code,start,end){
   if(!code||!start) return;
-  if(!monitorResets[code]||start>monitorResets[code]) monitorResets[code]=start;
+  if(!monitorResets[code]||start>monitorResets[code]){ monitorResets[code]=start; monitorEnds[code]=end||""; }
+  else if(end && (!monitorEnds[code] || end>monitorEnds[code])) monitorEnds[code]=end;
 }
 var MONITOR_FALLBACK=[
   {code:"002724",name:"海洋王",start:"2026-11-02",end:"2026-11-13"},
@@ -1018,14 +1019,14 @@ async function evaluatePoolItem(item){
   var maxDate=rows[rows.length-1].date;
   var idxRows=idx.rows.filter(function(r){ return r.date<=maxDate; }).slice(-60);
   if(idxRows.length<8) throw new Error("指数数据不足");
-  var mstart=monitorStartFor(item.code);
-  if(mstart && mstart<=maxDate){
+  var minfo=monitorInfoFor(item.code);
+  var mstart=minfo.active&&minfo.start<=maxDate?minfo.start:"";
+  if(mstart){
     rows=rows.filter(function(r){ return r.date>=mstart; });
     idxRows=idxRows.filter(function(r){ return r.date>=mstart; });
     if(rows.length<8) throw new Error("监管重置后数据不足");
-  }else{
-    mstart="";
   }
+  var mexit=minfo.exited?minfo.end:"";
   // 盘口价已经属于今天：补一根当日K线，让预测按现价而不是昨收计算。
   // 指数当天涨跌在盘口接口里不可得，这里按 0 处理，只用于池内快速预测；
   // 点开个股后会拉腾讯实时指数，结果以个股详情为准。
@@ -1068,7 +1069,7 @@ async function evaluatePoolItem(item){
     space:sp.space, spaceRule:best?triggerRule(best):"", spaceHit:!!sp.hit,
     limit:th.limit,
     nextSpace:nsp.space, nextSpaceHit:!!nsp.hit,
-    monitorReset:a.monitorReset||"",
+    monitorReset:a.monitorReset||"", monitorExit:mexit,
     foot:best?best.foot:"数据不足", analysis:a, error:""
   };
 }
@@ -1081,7 +1082,7 @@ function compactPoolItem(x){
     nearestThreshold:x.nearestThreshold,nearestRange:x.nearestRange||"",
     limit:x.limit,
     space:x.space,spaceRule:x.spaceRule||"",spaceHit:!!x.spaceHit,
-    nextSpace:x.nextSpace,nextSpaceHit:!!x.nextSpaceHit,monitorReset:x.monitorReset||"",foot:x.foot,error:x.error||""
+    nextSpace:x.nextSpace,nextSpaceHit:!!x.nextSpaceHit,monitorReset:x.monitorReset||"",monitorExit:x.monitorExit||"",foot:x.foot,error:x.error||""
   };
 }
 function cachePool(){
@@ -1126,7 +1127,7 @@ function parseMonitor(json){
     var name=String(x.STKNAME!=null?x.STKNAME:(x.name||code)).trim();
     if(!board||seen[code]||/^\*?ST/i.test(name)) return;
     var start=ymd(x.VALIDATESTARTDATE), end=ymd(x.VALIDATEENDDATE);
-    if(start && start<=today) recordMonitorReset(code,start);
+    if(start && start<=today) recordMonitorReset(code,start,end);
     if(start && start>today) return;
     if(end && end<today) return;
     seen[code]=1;
@@ -1169,7 +1170,7 @@ function parseSevereMonitor(json){
     var board=boardOf(code);
     if(!board||seen[code]||/^\*?ST/i.test(name)) return;
     var start=ymd(x.PREDICT_START_DATE), end=ymd(x.PREDICT_END_DATE);
-    if(start && start<=today) recordMonitorReset(code,start);
+    if(start && start<=today) recordMonitorReset(code,start,end);
     if(!start||!end||start>today||end<today) return;
     seen[code]=1;
     out.push({
@@ -1190,7 +1191,7 @@ function parseFallbackMonitor(){
   MONITOR_FALLBACK.forEach(function(x){
     var board=boardOf(x.code);
     if(!board||/^\*?ST/i.test(x.name)) return;
-    if(x.start<=today) recordMonitorReset(x.code,x.start);
+    if(x.start<=today) recordMonitorReset(x.code,x.start,x.end);
     if(x.start>today||x.end<today) return;
     out.push({
       code:x.code, name:x.name,
@@ -1224,9 +1225,17 @@ function isMonitored(code){ return !!monitorSet[code]; }
 function monitorRecord(code){
   return monitor.items.filter(function(x){ return x.code===code; })[0]||null;
 }
-function monitorStartFor(code){
+function monitorInfoFor(code){
   var m=monitorRecord(code);
-  return (m&&m.startDate)||monitorResets[code]||"";
+  var start=(m&&m.startDate)||monitorResets[code]||"";
+  var end=(m&&m.endDate)||monitorEnds[code]||"";
+  var today=todayYmd();
+  var exited=!!(end&&end<today);
+  return {start:start,end:end,active:!!(start&&start<=today&&!exited),exited:exited};
+}
+function monitorStartFor(code){
+  var info=monitorInfoFor(code);
+  return info.active?info.start:"";
 }
 async function ensureMonitor(){
   if(monitor.items.length) return;
@@ -1764,7 +1773,7 @@ function analyze(rows,indexRows,opt){
     daily:daily,events:events,checks:checks,priceEvents:priceEvents,turnEvents:turnEvents,sevEvents:sevEvents,
     last:ld,lastTurn:lastTurn,level:level,title:title,desc:desc,risk:risk,lastEvent:lastEvent,
     countUp:countUp,countDown:countDown,hasTurnover:hasTurnover,missingIndex:missing,
-    monitorReset:opt.monitorReset||"",
+    monitorReset:opt.monitorReset||"", monitorExit:opt.monitorExit||"",
     range10:range10,range30:range30,dev30:ld.dev30,future:future,opt:opt
   };
 }
@@ -1911,7 +1920,7 @@ function render(data){
         '<button type="button" class="watch-inline'+(isWatched(q.code)?" on":"")+'" data-watch-code="'+esc(q.code)+'" data-watch-name="'+esc(name)+'">'+(isWatched(q.code)?"★ 已关注":"＋ 关注")+'</button>'+
       '</div>'+
       '<div class="stock-date">'+(rt?(closed?'收盘':'实时')+' <b style="color:var(--tx2)">'+esc(rt.date)+' '+esc(rt.time)+'</b>':'数据截至 <b style="color:var(--tx2)">'+esc(last.date)+'</b>')+' · '+esc(setSourceNote(s))+
-        (rt?(closed?' · 腾讯行情':' · 实时腾讯'):'')+(a.missingIndex&&!rt?' · 指数缺失 '+a.missingIndex+' 日':'')+(a.monitorReset?' · 监管重置 '+esc(a.monitorReset):'')+
+        (rt?(closed?' · 腾讯行情':' · 实时腾讯'):'')+(a.missingIndex&&!rt?' · 指数缺失 '+a.missingIndex+' 日':'')+(a.monitorReset?' · 监管重置 '+esc(a.monitorReset):(a.monitorExit?' · 已出监管 '+esc(a.monitorExit):''))+
       '</div>'+
     '</div>'+
     '<div class="stock-quote">'+
@@ -1941,6 +1950,7 @@ function renderVerdict(a,last){
   var desc=a.desc;
   if(rt) desc="今日开盘至今 "+fmtPct(rt.openPct)+"（今开 "+fmtPrice(rt.open)+" → "+(closed?"收盘 ":"现价 ")+fmtPrice(rt.price)+"）。"+desc;
   if(a.monitorReset) desc="已按监管起点 "+a.monitorReset+" 重新计算，之前涨幅不再计入。"+desc;
+  else if(a.monitorExit) desc="监管期已于 "+a.monitorExit+" 结束；按正常周期计算，历史涨幅不重置。"+desc;
   $("#verdict").innerHTML=
     '<div class="verdict '+a.level+'">'+
       '<div class="vmark">'+icon+'</div>'+
@@ -2205,6 +2215,7 @@ function poolRowHtml(x){
   var todayTxt=st==="sev"?"当日预测：触发":st==="near"?"当日预测：接近":st==="warn"?"当日：监控":"当日预测：未触发";
   var extra="";
   if(isMonitored(x.code)&&st!=="warn") extra+=' <i class="pool-badge warn">监控中</i>';
+  if(x.monitorExit) extra+=' <i class="pool-badge ok">已出监管</i>';
   var spaceHtml="";
   if(pool.mode==="watch" && x.space!=null){
     var spaceCell=function(label,val,hit){
@@ -2667,20 +2678,20 @@ async function runAnalyze(code,opts){
     var maxDate=rows[rows.length-1].date;
     var idxRows=idx.rows.filter(function(r){ return r.date<=maxDate; });
     if(idxRows.length<8) throw new Error("对应指数在截止日前的数据不足。");
-    var mstart=monitorStartFor(info.code);
-    if(mstart && mstart<=maxDate && (!asof || mstart<=asof)){
+    var minfo=monitorInfoFor(info.code);
+    var mstart=minfo.active&&minfo.start<=maxDate&&(!asof||minfo.start<=asof)?minfo.start:"";
+    if(mstart){
       rows=rows.filter(function(r){ return r.date>=mstart; });
       idxRows=idxRows.filter(function(r){ return r.date>=mstart; });
       if(rows.length<8) throw new Error("监管重置起点 "+mstart+" 之后不足 8 个交易日，无法计算。");
-    }else{
-      mstart="";
     }
+    var mexit=minfo.exited?minfo.end:"";
     var name=stock.name||info.code;
     var isST=/ST/i.test(name);
     var th=thresholds(info.board,isST);
     var opt={
       board:info.board,boardName:info.boardName,isST:isST,
-      abn:th.abn,repeat:th.repeat,limit:th.limit,monitorReset:mstart,
+      abn:th.abn,repeat:th.repeat,limit:th.limit,monitorReset:mstart,monitorExit:mexit,
       name:name,indexName:idx.name||info.index.name,indexCode:info.index.code
     };
     var priorRows=rows.slice(), priorIdx=idxRows.slice();

@@ -103,7 +103,9 @@ def api(report: str, trade_date: str, page_size: int = 5000) -> list[dict]:
 
 
 def cached(report: str, trade_date: str, use_cache: bool) -> list[dict]:
-    if not use_cache:
+    # 当天的缓存一律不认：收盘早期抓到的榜单是残缺的（16:30 左右只出一半），
+    # 后面再跑必须重新抓，否则会把半份数据一直钉在缓存里。
+    if not use_cache or trade_date == datetime.now().strftime("%Y-%m-%d"):
         return api(report, trade_date)
     os.makedirs(CACHE_DIR, exist_ok=True)
     path = os.path.join(CACHE_DIR, f"{trade_date}_{report}.json")
@@ -836,7 +838,26 @@ const isHttp = (typeof location !== "undefined") && location.protocol.indexOf("h
   if (DATA.stale){
     live.innerHTML = `<span class="stale" title="龙虎榜在交易日 16:30–17:00 之后更新">${esc(DATA.hint || (DATA.today + " 数据未出"))}，当前为 ${esc(DATA.date)}</span>`;
   } else if (isHttp){
-    live.innerHTML = `<span class="dim" style="font-size:12px" title="页面每 60 秒检查一次版本号，有新版自动刷新；龙虎榜数据在交易日 16:30 之后发布，每日 17:15 起定时更新"><span class="dot"></span>自动刷新中 · 每 60 秒检查</span>`;
+    live.innerHTML = `<span class="dim" style="font-size:12px" title="页面每 60 秒检查一次版本号，有新版自动刷新；龙虎榜收盘后 18:00 左右才齐，每日 18:40 起定时生成"><span class="dot"></span>自动刷新中 · 每 60 秒检查</span>`;
+  }
+})();
+
+// 快照过期自检：静态站不会自己更新，日期落后于最近交易日时给出提示（休市日不会误报）
+(function(){
+  const live = $("#live");
+  if (!live || DATA.stale) return;
+  const pad = n => String(n).padStart(2, "0");
+  const ymd = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const now = new Date();
+  const mins = now.getHours() * 60 + now.getMinutes();
+  const expect = new Date(now);
+  const back = () => { while (expect.getDay() === 0 || expect.getDay() === 6) expect.setDate(expect.getDate() - 1); };
+  back();
+  // 交易日 18:30 之前当天榜单还没出齐，最近可用的仍是上一交易日
+  if (ymd(expect) === ymd(now) && mins < 18 * 60 + 30) { expect.setDate(expect.getDate() - 1); back(); }
+  const want = ymd(expect);
+  if (want > String(DATA.date)) {
+    live.innerHTML = `<span class="stale" title="本页是静态快照，需要生成任务跑到才会有新数据">数据停留在 ${esc(DATA.date)}，应为 ${esc(want)}（可能尚未生成）</span>`;
   }
 })();
 

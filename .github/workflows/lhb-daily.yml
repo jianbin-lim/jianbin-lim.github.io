@@ -1,0 +1,54 @@
+name: lhb-radar daily
+
+# 龙虎榜每天收盘后 18:00 左右才出齐，所以放在 18:40 生成；
+# 20:40、22:40 再跑两次兜底（数据没变时脚本自己跳过，不会产生空提交）。
+on:
+  schedule:
+    - cron: "40 10,12,14 * * 1-5" # UTC → 北京 18:40 / 20:40 / 22:40
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: lhb-radar-daily
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 生成快照
+        run: |
+          python tools/lhb/lhb.py \
+            --tags tools/lhb/tags.csv \
+            --static lhb-radar \
+            --site-link https://jianbin-lim.github.io/
+
+      - name: 校验产物
+        run: |
+          python - <<'PY'
+          import json
+          v = json.load(open("lhb-radar/version.json", encoding="utf-8"))
+          print(v)
+          assert v.get("stocks", 0) > 0, "榜单为空，放弃提交"
+          PY
+
+      - name: 提交
+        run: |
+          git config user.name "lhb-radar-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A lhb-radar
+          if git diff --cached --quiet; then
+            echo "数据无变化，跳过提交"
+            exit 0
+          fi
+          git commit -m "chore(lhb-radar): 更新 $(TZ=Asia/Shanghai date +%F) 龙虎榜"
+          git push

@@ -1,20 +1,20 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#010607">
-  <meta name="description" content="一只橙色点云胡萝卜吉祥物，悬浮在五月天《倔强》的歌词墙上。WebGL point sprites, scanlines and CRT post-processing.">
+  <meta name="description" content="一只橙色胡萝卜吉祥物，悬浮在五月天《倔强》的歌词墙前。可播放歌词循环，也可载入本地音频。">
   <link rel="canonical" href="https://jianbin-lim.github.io/hologram-bunny/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="HOLO // CARROT — 倔强">
-  <meta property="og:description" content="一只橙色点云胡萝卜，悬浮在五月天《倔强》的歌词墙上。">
+  <meta property="og:description" content="橙色胡萝卜贴图 + 五月天《倔强》歌词墙 + 歌词播放器。">
   <meta property="og:url" content="https://jianbin-lim.github.io/hologram-bunny/">
-  <meta property="og:image" content="https://jianbin-lim.github.io/hologram-bunny/preview.png?v=carrot">
+  <meta property="og:image" content="https://jianbin-lim.github.io/hologram-bunny/preview.png?v=carrot2">
   <meta name="twitter:card" content="summary_large_image">
   <title>HOLO // CARROT — 倔强</title>
-  <link rel="stylesheet" href="styles.css?v=carrot">
+  <link rel="stylesheet" href="styles.css?v=carrot2">
 </head>
 <body>
   <div class="app">
@@ -29,7 +29,7 @@
         </div>
         <div class="chrome-meta">
           <span>mayday / 2004</span>
-          <span>lyric view</span>
+          <span>lyric player</span>
         </div>
       </div>
 
@@ -63,50 +63,83 @@
 
     <!-- Layer 2: the hologram -->
     <main class="stage">
-      <section class="holo" id="holo" aria-label="Orange point-cloud carrot mascot hologram">
+      <section class="holo" id="holo" aria-label="Orange carrot mascot hologram">
         <header class="holo-top">
           <span class="holo-title">
             <i class="rec-dot"></i>
-            HOLO_VIEW <span class="sep">/</span> CARROT.SDF
+            HOLO_VIEW <span class="sep">/</span> CARROT.PNG
           </span>
           <span class="holo-top-right">
-            <span id="point-label">14.1K PTS</span>
+            <span>PNG · 260×383</span>
             <span class="sep">·</span>
             <span>LIVE</span>
           </span>
         </header>
 
         <div class="holo-body" id="holo-body">
-          <canvas id="scene" aria-label="An orange point-cloud carrot mascot slowly rotating behind scanlines"></canvas>
+          <div class="mascot" id="mascot">
+            <div class="mascot-aura" aria-hidden="true"></div>
+            <div class="mascot-inner" id="mascot-inner">
+              <img id="carrot-image" src="carrot.png?v=carrot2" alt="橙色胡萝卜吉祥物" draggable="false">
+            </div>
+          </div>
           <div class="scanbeam" id="scanbeam" aria-hidden="true"></div>
 
           <div class="holo-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 
-          <div class="hud hud-a">MESH <b id="mesh-count">14,080</b> PTS</div>
-          <div class="hud hud-b">DEPTH <b id="zoom-label">1.00</b></div>
-          <div class="hud hud-c" id="telemetry">YAW −18.0° / PITCH −1.2°</div>
+          <div class="hud hud-a">SPRITE <b>260×383</b></div>
+          <div class="hud hud-b">SCALE <b id="zoom-label">1.00</b></div>
+          <div class="hud hud-c" id="telemetry">TILT X −1.2° / Y 2.4°</div>
           <div class="hud hud-d" id="scan-label">SCAN 042.7</div>
         </div>
 
         <footer class="holo-bottom">
-          <span><b>DRAG</b> ROTATE</span>
+          <span><b>DRAG</b> TILT</span>
           <span><b>SCROLL</b> ZOOM</span>
-          <span><b>SPACE</b> PAUSE</span>
+          <span><b>SPACE</b> PLAY</span>
           <button class="reset" id="reset" type="button">RESET</button>
         </footer>
 
         <div class="glitch-slice" aria-hidden="true"></div>
       </section>
+
+      <!-- Layer 3: lyric / audio player -->
+      <div class="player" id="player">
+        <button class="player-toggle" id="play" type="button" aria-label="播放歌词">▶</button>
+
+        <div class="player-main">
+          <div class="player-meta">
+            <span class="player-title">倔强</span>
+            <span class="player-artist">五月天</span>
+            <span class="player-status" id="player-status">DEMO / 歌词循环</span>
+          </div>
+          <div class="player-progress" id="progress" role="slider" aria-label="播放进度" tabindex="0">
+            <div class="player-fill" id="progress-fill"></div>
+          </div>
+          <div class="player-now" id="now-lyric">我和我最后的倔强</div>
+        </div>
+
+        <div class="player-time" id="time">00:00 / 00:38</div>
+
+        <label class="player-load" title="载入本地音频（如你已购买的《倔强》）">
+          载入音频
+          <input id="audio-file" type="file" accept="audio/*" hidden>
+        </label>
+
+        <audio id="audio" preload="metadata"></audio>
+      </div>
     </main>
 
-    <!-- Layer 3: monitor finish -->
+    <!-- Layer 4: monitor finish -->
     <div class="crt-vignette" aria-hidden="true"></div>
     <div class="crt-scanlines" aria-hidden="true"></div>
     <div class="crt-sweep" aria-hidden="true"></div>
     <div class="crt-noise" aria-hidden="true"></div>
   </div>
 
-  <script src="carrot-points.js?v=carrot"></script>
-  <script src="app.js?v=carrot"></script>
+  <script src="app.js?v=carrot2"></script>
 </body>
 </html>
+
+
+

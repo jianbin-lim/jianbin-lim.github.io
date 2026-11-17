@@ -29,25 +29,32 @@
 
   const body = $("#holo-body");
   const holo = $("#holo");
-  const codeEl = $("#code");
-  const gutterEl = $("#gutter");
-  const codeRightEl = $("#code-right");
-  const gutterRightEl = $("#gutter-right");
   const telemetryEl = $("#telemetry");
   const scanLabelEl = $("#scan-label");
   const zoomLabelEl = $("#zoom-label");
   const pointLabelEl = $("#point-label");
   const meshCountEl = $("#mesh-count");
-  const cursorStatusEl = $("#cursor-status");
   const resetButton = $("#reset");
   const scanBeamEl = $("#scanbeam");
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const TAU = Math.PI * 2;
   const CAMERA_Z = 2.85;
-  const CODE_START = 13; // 0-based; line 14 of kernel/groups.c
-  const source = window.GROUPS_SOURCE || [];
-  const cloudSource = window.RABBIT_POINTS;
+  const cloudSource = window.CARROT_POINTS;
+
+  // Small palette used only by the Canvas 2D fallback. WebGL uses full RGB.
+  const FALLBACK_PALETTE = [
+    [255, 128, 24],
+    [229, 94, 12],
+    [112, 211, 56],
+    [68, 155, 40],
+    [255, 247, 231],
+    [25, 88, 185],
+    [54, 27, 15],
+  ];
+  const FALLBACK_STYLES = FALLBACK_PALETTE.map(
+    ([r, g, b]) => `rgb(${r},${g},${b})`
+  );
 
   if (!cloudSource || !cloudSource.data) {
     if (hudError("POINT DATA MISSING")) return;
@@ -90,7 +97,6 @@
   let dust = [];
   let rafId = 0;
   let glitchTimer = 0;
-  let codeLayoutTimer = 0;
   let glState = null;
 
   function hudError(message) {
@@ -115,20 +121,43 @@
     const ny = new Float32Array(count);
     const nz = new Float32Array(count);
     const seed = new Float32Array(count);
+    const r = new Uint8Array(count);
+    const g = new Uint8Array(count);
+    const b = new Uint8Array(count);
+    const palette = new Uint8Array(count);
 
     for (let i = 0; i < count; i += 1) {
-      const offset = i * 9;
+      const offset = i * 12;
       x[i] = dv.getInt16(offset, true) / 32767;
       y[i] = dv.getInt16(offset + 2, true) / 32767;
       z[i] = dv.getInt16(offset + 4, true) / 32767;
       nx[i] = dv.getInt8(offset + 6) / 127;
       ny[i] = dv.getInt8(offset + 7) / 127;
       nz[i] = dv.getInt8(offset + 8) / 127;
+      r[i] = dv.getUint8(offset + 9);
+      g[i] = dv.getUint8(offset + 10);
+      b[i] = dv.getUint8(offset + 11);
+
+      let bestIndex = 0;
+      let bestDistance = Infinity;
+      for (let p = 0; p < FALLBACK_PALETTE.length; p += 1) {
+        const entry = FALLBACK_PALETTE[p];
+        const dr = r[i] - entry[0];
+        const dg = g[i] - entry[1];
+        const db = b[i] - entry[2];
+        const distance = dr * dr + dg * dg + db * db;
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = p;
+        }
+      }
+      palette[i] = bestIndex;
+
       const hash = Math.sin(i * 127.1 + 311.7) * 43758.5453;
       seed[i] = hash - Math.floor(hash);
     }
 
-    return { count, x, y, z, nx, ny, nz, seed };
+    return { count, x, y, z, nx, ny, nz, seed, r, g, b, palette };
   }
 
   function createGlowSprite() {
@@ -214,6 +243,7 @@
       precision highp float;
       attribute vec3 aPosition;
       attribute vec3 aNormal;
+      attribute vec3 aColor;
       attribute float aSeed;
 
       uniform float uYaw;
@@ -228,6 +258,7 @@
 
       varying float vAlpha;
       varying float vHot;
+      varying vec3 vColor;
 
       void main() {
         float cy = cos(uYaw);
@@ -264,19 +295,22 @@
         float band = 0.11 + 0.89 * pow(row, 4.0);
         float flicker = 0.86 + 0.14 * sin(uTime * 2.45 + aSeed * 31.0);
 
-        float alpha = (vis + rim + beam * 0.35) * band * flicker * 1.08;
-        if (p.y > 0.20) alpha *= 1.18;
-        if (p.y < -0.34) alpha *= 1.06;
-        if (p.y > 0.44) alpha *= 0.42;
+        float alpha = (vis + rim + beam * 0.35) * band * flicker * 1.1;
+        if (p.y > 0.10) alpha *= 1.08;
 
         float size = (1.16 + 1.8 * front + 0.9 * beam + 1.25 * rim + (aSeed > 0.976 ? 0.7 : 0.0)) * (0.82 + 0.32 * aSeed);
-        if (p.y > 0.20) size *= 1.06;
-        if (p.y > 0.44) size *= 0.7;
+        if (p.y > 0.10) size *= 1.03;
+
+        // The orange body reads a little fuller than the green leaves/eyes.
+        float warm = step(aColor.g + 0.08, aColor.r);
+        alpha *= mix(1.0, 1.1, warm);
+        size *= mix(1.0, 1.25, warm);
 
         float glowPass = uPass;
         gl_PointSize = clamp(size * mix(3.0, 12.0, glowPass) * uDpr, 2.0, 60.0);
         vAlpha = clamp(alpha * mix(0.92, 0.11, glowPass), 0.0, 0.95);
         vHot = min(max(beam * 0.6, 0.0), 1.0);
+        vColor = aColor;
       }
     `;
 
@@ -285,25 +319,23 @@
       uniform mediump float uPass;
       varying float vAlpha;
       varying float vHot;
+      varying vec3 vColor;
 
       void main() {
         vec2 uv = gl_PointCoord - vec2(0.5);
         float d = length(uv) * 2.0;
         if (d > 1.0) discard;
 
-        vec3 cyan = vec3(0.05, 1.0, 0.93);
-        vec3 hot = vec3(0.85, 1.0, 1.0);
-
         if (uPass > 0.5) {
           float halo = pow(max(0.0, 1.0 - d), 2.2);
           float a = vAlpha * halo;
-          gl_FragColor = vec4(cyan * a, a);
+          gl_FragColor = vec4(vColor * a, a);
           return;
         }
 
         float core = smoothstep(0.22, 0.0, d);
         float halo = pow(max(0.0, 1.0 - d), 2.0);
-        vec3 color = mix(cyan, hot, min(max(vHot, 0.0), 1.0) * core);
+        vec3 color = mix(vColor, vec3(1.0), min(max(vHot, 0.0), 1.0) * core * 0.45);
         float alpha = vAlpha * (core * 0.9 + halo * 0.22);
         gl_FragColor = vec4(color * alpha, alpha);
       }
@@ -314,6 +346,7 @@
 
     const count = pointCloud.count;
     const interleaved = new Float32Array(count * 7);
+    const colors = new Float32Array(count * 3);
     for (let i = 0; i < count; i += 1) {
       const offset = i * 7;
       interleaved[offset] = pointCloud.x[i];
@@ -323,22 +356,32 @@
       interleaved[offset + 4] = pointCloud.ny[i];
       interleaved[offset + 5] = pointCloud.nz[i];
       interleaved[offset + 6] = pointCloud.seed[i];
+
+      colors[i * 3] = pointCloud.r[i] / 255;
+      colors[i * 3 + 1] = pointCloud.g[i] / 255;
+      colors[i * 3 + 2] = pointCloud.b[i] / 255;
     }
 
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, interleaved, gl.STATIC_DRAW);
 
+    const colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+
     const stride = 7 * 4;
     const attributes = {
       position: gl.getAttribLocation(program, "aPosition"),
       normal: gl.getAttribLocation(program, "aNormal"),
+      color: gl.getAttribLocation(program, "aColor"),
       seed: gl.getAttribLocation(program, "aSeed"),
     };
 
     glState = {
       program,
       buffer,
+      colorBuffer,
       attributes,
       uniforms: {
         yaw: gl.getUniformLocation(program, "uYaw"),
@@ -361,6 +404,10 @@
     gl.vertexAttribPointer(attributes.normal, 3, gl.FLOAT, false, stride, 12);
     gl.enableVertexAttribArray(attributes.seed);
     gl.vertexAttribPointer(attributes.seed, 1, gl.FLOAT, false, stride, 24);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.enableVertexAttribArray(attributes.color);
+    gl.vertexAttribPointer(attributes.color, 3, gl.FLOAT, false, 3 * 4, 0);
 
     gl.disable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
@@ -403,7 +450,6 @@
 
     if (gl) {
       gl.viewport(0, 0, canvas.width, canvas.height);
-      scheduleCodeBuild();
       return;
     }
 
@@ -414,127 +460,6 @@
     ctx.imageSmoothingQuality = "high";
     glowCtx.imageSmoothingEnabled = true;
     glowCtx.imageSmoothingQuality = "high";
-    scheduleCodeBuild();
-  }
-
-  function scheduleCodeBuild() {
-    window.clearTimeout(codeLayoutTimer);
-    codeLayoutTimer = window.setTimeout(buildCode, 80);
-  }
-
-  /* ------------------------------------------------------------------------
-     Code backdrop
-     ------------------------------------------------------------------------ */
-
-  const KEYWORDS =
-    "struct|int|void|if|else|for|while|return|goto|static|const|unsigned|" +
-    "char|long|short|sizeof|typedef|enum|union|extern|inline|volatile|register";
-
-  const TOKEN_RE = new RegExp(
-    "(\\/\\*.*?\\*\\/|\\/\\/.*$)" +
-      '|("(?:\\\\.|[^"\\\\])*")' +
-      `|\\b(${KEYWORDS})\\b` +
-      "|\\b([A-Z][A-Z0-9_]{2,})\\b" +
-      "|\\b(\\d+)\\b" +
-      "|([A-Za-z_]\\w*)(?=\\s*\\()",
-    "g"
-  );
-
-  function escapeHtml(value) {
-    return value
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  function highlightLine(line) {
-    if (!line) return "&nbsp;";
-    const trimmed = line.trimStart();
-    if (
-      trimmed.startsWith("/*") ||
-      trimmed.startsWith("*") ||
-      trimmed.startsWith("//")
-    ) {
-      return `<span class="tok-comment">${escapeHtml(line)}</span>`;
-    }
-    if (trimmed.startsWith("#")) {
-      return `<span class="tok-pre">${escapeHtml(line)}</span>`;
-    }
-
-    let html = "";
-    let last = 0;
-    let match;
-    TOKEN_RE.lastIndex = 0;
-    while ((match = TOKEN_RE.exec(line)) !== null) {
-      html += escapeHtml(line.slice(last, match.index));
-      if (match[1] || match[2]) {
-        html += `<span class="tok-comment">${escapeHtml(match[1] || match[2])}</span>`;
-      } else if (match[3]) {
-        html += `<span class="tok-key">${escapeHtml(match[3])}</span>`;
-      } else if (match[4]) {
-        html += `<span class="tok-type">${escapeHtml(match[4])}</span>`;
-      } else if (match[5]) {
-        html += `<span class="tok-num">${escapeHtml(match[5])}</span>`;
-      } else if (match[6]) {
-        html += `<span class="tok-fn">${escapeHtml(match[6])}</span>`;
-      } else {
-        html += escapeHtml(match[0]);
-      }
-      last = TOKEN_RE.lastIndex;
-    }
-    html += escapeHtml(line.slice(last));
-    return html || "&nbsp;";
-  }
-
-  function buildCodePanel(targetCode, targetGutter, startLine, activeIndex, caretOnActive) {
-    if (!targetCode || !targetGutter) return;
-    const codeStyle = window.getComputedStyle(targetCode);
-    const lineHeight = parseFloat(codeStyle.lineHeight) || 23;
-    const wrap = targetCode.parentElement;
-    const available = Math.max(0, wrap.clientHeight - 13);
-    const visibleLines = Math.max(10, Math.floor(available / lineHeight) + 1);
-
-    let codeHtml = "";
-    let gutterHtml = "";
-
-    for (let i = 0; i < visibleLines; i += 1) {
-      const index = startLine + i;
-      const line = source[index] || "";
-      const isActive = index === activeIndex;
-      const caret = isActive && caretOnActive ? '<span class="caret"></span>' : "";
-      codeHtml += `<span class="code-line${isActive ? " active" : ""}">${highlightLine(
-        line
-      )}${caret}</span>`;
-      gutterHtml += `<span class="gutter-line${isActive ? " active" : ""}">${
-        index + 1
-      }</span>`;
-    }
-
-    targetCode.innerHTML = codeHtml;
-    targetGutter.innerHTML = gutterHtml;
-  }
-
-  function buildCode() {
-    if (!codeEl || !gutterEl || !source.length) return;
-
-    const activeIndex = source.findIndex((line) => line.includes("nblocks = nblocks"));
-    const rightActiveIndex = source.findIndex((line) =>
-      line.includes("void groups_free")
-    );
-
-    buildCodePanel(codeEl, gutterEl, CODE_START, activeIndex, true);
-    buildCodePanel(
-      codeRightEl,
-      gutterRightEl,
-      CODE_START + 42,
-      rightActiveIndex,
-      false
-    );
-
-    if (activeIndex >= 0 && cursorStatusEl) {
-      cursorStatusEl.textContent = `Ln ${activeIndex + 1}, Col 1`;
-    }
   }
 
   /* ------------------------------------------------------------------------
@@ -651,9 +576,9 @@
     const nz = cloud.nz;
     const seed = cloud.seed;
 
-    // One fill style + per-point alpha keeps this fast in Canvas 2D. The soft
-    // halo comes from the low-resolution bloom pass below, not from a sprite.
-    ctx.fillStyle = "rgba(58,255,242,1)";
+    // One fill style at a time; the Canvas 2D fallback uses a small palette.
+    let lastStyle = "";
+    const palette = cloud.palette;
 
     for (let i = 0; i < count; i += 1) {
       const px = x[i];
@@ -699,9 +624,7 @@
         : 0.86 + 0.14 * Math.sin(t * 2.45 + seed[i] * 31.0);
 
       let alpha = (visibility + rim + beam * 0.35) * band * flicker * 1.08;
-      if (py > 0.20) alpha *= 1.14;
-      if (py < -0.34) alpha *= 1.06;
-      if (py > 0.44) alpha *= 0.62;
+      if (py > 0.10) alpha *= 1.08;
       if (alpha < 0.018) continue;
       if (alpha > 0.97) alpha = 0.97;
 
@@ -712,14 +635,18 @@
           1.25 * rim +
           (seed[i] > 0.976 ? 0.7 : 0)) *
         (0.82 + 0.32 * seed[i]);
-      if (py > 0.20) size *= 1.06;
-      if (py > 0.44) size *= 0.7;
+      if (py > 0.10) size *= 1.03;
 
       if (seed[i] > 0.994) {
         alpha = Math.min(0.98, alpha * 1.35);
         size *= 1.25;
       }
 
+      const style = FALLBACK_STYLES[palette[i]];
+      if (style !== lastStyle) {
+        ctx.fillStyle = style;
+        lastStyle = style;
+      }
       const core = Math.max(0.8, size * 0.72);
       ctx.globalAlpha = alpha;
       ctx.fillRect(sx - core * 0.5, sy - core * 0.5, core, core);
@@ -913,10 +840,7 @@
 
   function boot() {
     cloud = decodeCloud(cloudSource);
-    activeCount = Math.min(
-      cloud.count,
-      window.innerWidth < 720 || window.innerHeight < 620 ? 8000 : 12000
-    );
+    activeCount = cloud.count;
 
     if (gl) {
       if (!setupWebGL(cloud)) {
@@ -932,15 +856,9 @@
     meshCountEl.textContent = cloud.count.toLocaleString("en-US");
 
     resize();
-    buildCode();
     window.addEventListener("resize", resize);
     if ("ResizeObserver" in window) {
       new ResizeObserver(resize).observe(body);
-    }
-    if (document.fonts?.ready) {
-      document.fonts.ready.then(() => {
-        buildCode();
-      });
     }
 
     window.setTimeout(() => holo.classList.add("is-ready"), 90);

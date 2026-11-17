@@ -4,6 +4,7 @@
   --cyan: #5ffff2;
   --cyan-soft: #1edbd2;
   --cyan-deep: #008c8c;
+  --amber: #ffc46b;
   --panel: #020b0d;
   --line: rgba(70, 255, 240, 0.16);
   --mono: "Cascadia Code", "JetBrains Mono", "SFMono-Regular", "SF Mono",
@@ -295,6 +296,190 @@ button {
 }
 
 /* --------------------------------------------------------------------------
+   Lyric wall
+   -------------------------------------------------------------------------- */
+
+.lyrics-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.lyrics-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(0, 255, 230, 0.035), transparent 48%),
+    linear-gradient(90deg, rgba(0, 255, 230, 0.02), transparent 18%, transparent 82%, rgba(0, 255, 230, 0.016));
+}
+
+.lyric-column {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  width: 34vw;
+  transform: translateY(-50%);
+  pointer-events: none;
+  user-select: none;
+}
+
+.lyric-left {
+  left: 4vw;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.lyric-right {
+  right: 4vw;
+  align-items: flex-end;
+  padding-top: 4vh;
+  text-align: right;
+}
+
+.lyric-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 1.35vh;
+  color: rgba(255, 208, 139, 0.55);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.lyric-kicker i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 10px rgba(255, 184, 90, 0.7);
+}
+
+.lyric-right .lyric-kicker {
+  justify-content: flex-end;
+  color: rgba(112, 227, 218, 0.3);
+}
+
+.lyric-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65em;
+  margin: 0;
+  color: rgba(125, 245, 236, 0.29);
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: clamp(20px, 2.15vw, 34px);
+  font-weight: 600;
+  letter-spacing: 0.045em;
+  line-height: 1.5;
+  text-shadow: 0 0 22px rgba(0, 255, 230, 0.08);
+  white-space: nowrap;
+}
+
+.lyric-right .lyric-line {
+  flex-direction: row-reverse;
+}
+
+.lyric-index {
+  min-width: 1.8em;
+  color: rgba(111, 233, 224, 0.23);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 0.13em;
+  transform: translateY(-0.22em);
+}
+
+.lyric-line.is-active {
+  color: rgba(255, 215, 151, 0.92);
+  text-shadow:
+    0 0 22px rgba(255, 166, 63, 0.22),
+    0 0 60px rgba(255, 140, 40, 0.08);
+}
+
+.lyric-line.is-active .lyric-index {
+  color: rgba(255, 198, 112, 0.75);
+}
+
+.lyric-right .lyric-line:last-child {
+  color: rgba(155, 248, 239, 0.38);
+}
+
+.lyric-watermark {
+  position: absolute;
+  bottom: -10vh;
+  left: -1.5vw;
+  z-index: 0;
+  color: rgba(93, 255, 240, 0.028);
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+  font-size: 27vw;
+  font-weight: 700;
+  letter-spacing: -0.12em;
+  line-height: 0.8;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .lyric-column {
+    width: 84vw;
+  }
+
+  .lyric-left {
+    top: 10px;
+    left: 5vw;
+    gap: 1px;
+    transform: none;
+    opacity: 0.62;
+  }
+
+  .lyric-right {
+    display: none;
+  }
+
+  .lyric-kicker {
+    display: none;
+  }
+
+  .lyric-line {
+    gap: 0.5em;
+    font-size: 16px;
+    line-height: 1.55;
+    letter-spacing: 0.015em;
+  }
+
+  .lyric-index {
+    min-width: 1.4em;
+    font-size: 6px;
+  }
+
+  .lyric-watermark {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .lyric-left {
+    top: 7px;
+  }
+
+  .lyric-line {
+    font-size: 14px;
+  }
+
+  .lyric-line:nth-child(5) {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
    Layer 2: the hologram viewport
    -------------------------------------------------------------------------- */
 
@@ -456,9 +641,9 @@ button {
   background: linear-gradient(
     180deg,
     transparent 0%,
-    rgba(30, 255, 236, 0.012) 32%,
-    rgba(104, 255, 245, 0.07) 50%,
-    rgba(30, 255, 236, 0.012) 68%,
+    rgba(255, 186, 104, 0.012) 32%,
+    rgba(255, 219, 170, 0.065) 50%,
+    rgba(255, 186, 104, 0.012) 68%,
     transparent 100%
   );
   mix-blend-mode: screen;
@@ -473,7 +658,7 @@ button {
   right: 0;
   left: 0;
   height: 1px;
-  background: rgba(180, 255, 250, 0.17);
+  background: rgba(255, 241, 216, 0.17);
 }
 
 .holo-corners {

@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   "use strict";
 
   const $ = (selector, root = document) => root.querySelector(selector);
@@ -43,7 +43,8 @@
     currentLine: -1,
     playing: false,
     demoElapsed: 0,
-    mode: "demo",
+    mode: "audio",
+    isDemo: true,
     audioUrl: null,
   };
 
@@ -126,6 +127,9 @@
 
   function togglePlay() {
     if (state.mode === "audio" && audio.src) {
+      if (audio.ended || (Number.isFinite(audio.duration) && audio.currentTime >= audio.duration - 0.05)) {
+        audio.currentTime = 0;
+      }
       if (audio.paused) {
         audio
           .play()
@@ -197,16 +201,17 @@
     if (state.audioUrl) URL.revokeObjectURL(state.audioUrl);
     state.audioUrl = URL.createObjectURL(file);
     state.mode = "audio";
+    state.isDemo = false;
+    audio.loop = false;
     audio.src = state.audioUrl;
-    playerStatus.textContent = "本地音频";
+    playerStatus.textContent = "本地音频 · 按播放";
 
     audio.load();
-    playerStatus.textContent = "本地音频 · 按播放";
   });
 
   audio.addEventListener("loadedmetadata", () => {
     state.mode = "audio";
-    playerStatus.textContent = "本地音频";
+    playerStatus.textContent = state.isDemo ? "DEMO 音轨 / 非原曲" : "本地音频";
     updateProgress();
     updateLyric(audio.currentTime);
   });
@@ -224,7 +229,11 @@
     updateProgress();
   });
   audio.addEventListener("error", () => {
-    if (state.mode === "audio" && audio.src) {
+    if (state.isDemo) {
+      state.mode = "demo";
+      playerStatus.textContent = "DEMO / 无声";
+      setPlaying(false);
+    } else if (state.mode === "audio" && audio.src) {
       playerStatus.textContent = "音频错误";
       setPlaying(false);
     }
@@ -430,5 +439,6 @@
     if (state.audioUrl) URL.revokeObjectURL(state.audioUrl);
   });
 })();
+
 
 

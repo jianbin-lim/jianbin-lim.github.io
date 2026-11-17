@@ -11,10 +11,10 @@
   <meta property="og:title" content="HOLO // CARROT — 倔强">
   <meta property="og:description" content="橙色胡萝卜贴图 + 五月天《倔强》歌词墙 + 歌词播放器。">
   <meta property="og:url" content="https://jianbin-lim.github.io/hologram-bunny/">
-  <meta property="og:image" content="https://jianbin-lim.github.io/hologram-bunny/preview.png?v=carrot2">
+  <meta property="og:image" content="https://jianbin-lim.github.io/hologram-bunny/preview.png?v=carrot3">
   <meta name="twitter:card" content="summary_large_image">
   <title>HOLO // CARROT — 倔强</title>
-  <link rel="stylesheet" href="styles.css?v=carrot2">
+  <link rel="stylesheet" href="styles.css?v=carrot3">
 </head>
 <body>
   <div class="app">
@@ -80,7 +80,7 @@
           <div class="mascot" id="mascot">
             <div class="mascot-aura" aria-hidden="true"></div>
             <div class="mascot-inner" id="mascot-inner">
-              <img id="carrot-image" src="carrot.png?v=carrot2" alt="橙色胡萝卜吉祥物" draggable="false">
+              <img id="carrot-image" src="carrot.png?v=carrot3" alt="橙色胡萝卜吉祥物" draggable="false">
             </div>
           </div>
           <div class="scanbeam" id="scanbeam" aria-hidden="true"></div>
@@ -111,7 +111,7 @@
           <div class="player-meta">
             <span class="player-title">倔强</span>
             <span class="player-artist">五月天</span>
-            <span class="player-status" id="player-status">DEMO / 歌词循环</span>
+            <span class="player-status" id="player-status">DEMO 音轨 / 非原曲</span>
           </div>
           <div class="player-progress" id="progress" role="slider" aria-label="播放进度" tabindex="0">
             <div class="player-fill" id="progress-fill"></div>
@@ -122,11 +122,11 @@
         <div class="player-time" id="time">00:00 / 00:38</div>
 
         <label class="player-load" title="载入本地音频（如你已购买的《倔强》）">
-          载入音频
+          载入原曲
           <input id="audio-file" type="file" accept="audio/*" hidden>
         </label>
 
-        <audio id="audio" preload="metadata"></audio>
+        <audio id="audio" preload="metadata" src="ambient-demo.wav?v=carrot3"></audio>
       </div>
     </main>
 
@@ -137,9 +137,10 @@
     <div class="crt-noise" aria-hidden="true"></div>
   </div>
 
-  <script src="app.js?v=carrot2"></script>
+  <script src="app.js?v=carrot3"></script>
 </body>
 </html>
+
 
 
 

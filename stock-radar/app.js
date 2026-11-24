@@ -144,6 +144,8 @@ var CHANGE_TYPES=[
   {id:15,label:"封跌停板"}
 ];
 var watchList=[];
+var CLOUD_KEY="abn.cloud.v1";
+var cloud={cfg:null,dirty:false,pushing:false,pulling:false,applying:false,timer:0,lastAt:0};
 var pool={mode:"near",items:[],scanning:false,source:"",lastAt:0,error:"",done:0,total:0,token:0};
 var watchState={items:[],loading:false,lastAt:0,token:0};
 function readWatchGroups(){
@@ -171,6 +173,7 @@ var activeWatchGroup=(function(){
 })();
 function saveWatchGroups(){
   try{ localStorage.setItem(WATCH_GROUPS_KEY,JSON.stringify(watchGroups)); localStorage.setItem(WATCH_GROUP_ACTIVE_KEY,activeWatchGroup); }catch(e){}
+  if(typeof markCloudDirty==="function") markCloudDirty();
 }
 function groupById(id){ return watchGroups.filter(function(g){ return g.id===id; })[0]||null; }
 function groupName(id){ var g=groupById(id); return g?g.name:"未分组"; }
@@ -267,6 +270,7 @@ function readWatch(){
 }
 function saveWatch(){
   try{ localStorage.setItem(WATCH_KEY,JSON.stringify(watchList)); }catch(e){}
+  if(typeof markCloudDirty==="function") markCloudDirty();
 }
 function isWatched(code){ return watchList.some(function(x){ return x.code===code; }); }
 function watchOf(code){ return watchList.filter(function(x){ return x.code===code; })[0]||null; }
@@ -409,9 +413,8 @@ function dateStamp(){
   var d=new Date();
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 }
-function exportWatch(){
-  if(!watchList.length){ toast("关注列表为空，没有可导出的内容。"); return; }
-  var payload={
+function watchPayload(){
+  return {
     app:"异动雷达",
     version:2,
     exportedAt:new Date().toISOString(),
@@ -419,6 +422,10 @@ function exportWatch(){
     activeGroup:activeGroupId(),
     watchlist:watchList.map(function(x){ return {code:x.code,name:x.name||"",group:x.group}; })
   };
+}
+function exportWatch(){
+  if(!watchList.length){ toast("关注列表为空，没有可导出的内容。"); return; }
+  var payload=watchPayload();
   var blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json;charset=utf-8"});
   var url=URL.createObjectURL(blob);
   var a=document.createElement("a");
@@ -430,7 +437,7 @@ function exportWatch(){
   setTimeout(function(){ URL.revokeObjectURL(url); },1500);
   toast("已下载 watchlist.json；把它放到 index.html 同目录即可跨设备使用。");
 }
-function importWatchData(data,silent){
+function importWatchData(data,silent,force){
   var list=Array.isArray(data)?data:(data&&Array.isArray(data.watchlist)?data.watchlist:(data&&Array.isArray(data.watch)?data.watch:(data&&Array.isArray(data.items)?data.items:null)));
   if(!list){ toast("JSON 格式不对：需要数组，或包含 watchlist 数组的对象。"); return; }
   var old={};
@@ -460,7 +467,7 @@ function importWatchData(data,silent){
     out.push({code:raw,name:String((x&&x.name)||old[raw]||""),group:gid});
   });
   if(!out.length){ toast("没有可导入的有效 A 股代码。"); return; }
-  if(watchList.length && !window.confirm("导入会覆盖当前 "+watchList.length+" 只关注，继续？")) return;
+  if(!force && watchList.length && !window.confirm("导入会覆盖当前 "+watchList.length+" 只关注，继续？")) return;
   watchList=out.slice(0,80);
   if(out.length>80) skipped+=out.length-80;
   if(data&&groupById(String(data.activeGroup||""))) activeWatchGroup=String(data.activeGroup);
@@ -476,6 +483,7 @@ function importWatchData(data,silent){
 }
 async function autoLoadRootWatch(){
   if(watchList.length) return;
+  if(cloud.cfg&&cloud.cfg.token) return;
   try{
     var r=await fetch("watchlist.json?ts="+Date.now(),{cache:"no-store"});
     if(!r.ok) return;
@@ -495,6 +503,210 @@ async function importWatchFile(file){
   }catch(e){
     toast("导入失败：文件不是有效的 JSON。");
   }
+}
+
+/* =========================================================
+   1b. 关注列表云同步（GitHub Contents API）
+   ========================================================= */
+function readCloudConfig(){
+  try{
+    var x=JSON.parse(localStorage.getItem(CLOUD_KEY)||"null");
+    if(!x||!x.token) return null;
+    var repo=String(x.repo||"jianbin-lim/jianbin-lim.github.io").trim();
+    var path=String(x.path||"stock-radar/watchlist.json").trim().replace(/^\/+/,"");
+    var branch=String(x.branch||"master").trim();
+    if(!/^[\w.-]+\/[\w.-]+$/.test(repo)||/\.\./.test(path)||!path) return null;
+    return {token:String(x.token),repo:repo,path:path,branch:branch||"master",auto:x.auto!==false,sha:String(x.sha||"")};
+  }catch(e){ return null; }
+}
+function storeCloudConfig(){
+  try{
+    if(!cloud.cfg){ localStorage.removeItem(CLOUD_KEY); return; }
+    localStorage.setItem(CLOUD_KEY,JSON.stringify(cloud.cfg));
+  }catch(e){}
+}
+function cloudEncode(str){
+  var bytes=new TextEncoder().encode(str), bin="";
+  for(var i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+function cloudDecode(b64){
+  var bin=atob(String(b64||"").replace(/\s/g,""));
+  var bytes=new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+function cloudUrl(){
+  return "https://api.github.com/repos/"+cloud.cfg.repo+"/contents/"+
+    cloud.cfg.path.split("/").map(encodeURIComponent).join("/");
+}
+async function cloudApi(method,url,body){
+  var r=await fetch(url,{
+    method:method,
+    headers:{Authorization:"Bearer "+cloud.cfg.token,Accept:"application/vnd.github+json","Content-Type":"application/json"},
+    body:body?JSON.stringify(body):undefined,
+    cache:"no-store"
+  });
+  var j=null;
+  try{ j=await r.json(); }catch(e){}
+  if(!r.ok){
+    var err=new Error((j&&j.message)||("GitHub HTTP "+r.status));
+    err.status=r.status;
+    throw err;
+  }
+  return j;
+}
+function setCloudStatus(msg,tone){
+  var el=$("#cloudStatus");
+  if(el){ el.textContent=msg||""; el.className="cloud-status"+(tone?" "+tone:""); }
+  var btn=$("#btnCloud");
+  if(btn) btn.title=msg||"云端同步";
+}
+function cloudStamp(){
+  var d=new Date();
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+}
+function cloudApply(data,sha){
+  if(!data||!Array.isArray(data.watchlist)) throw new Error("云端文件格式不对");
+  cloud.applying=true;
+  try{
+    importWatchData(data,true,true);
+    cloud.cfg.sha=sha||"";
+    cloud.dirty=false;
+    cloud.lastAt=Date.now();
+    storeCloudConfig();
+    setCloudStatus("已拉取云端 · "+cloudStamp(),"ok");
+    if(pool.mode==="watch") refreshWatch(true);
+    renderWatchCount();
+    renderPool();
+  }finally{
+    cloud.applying=false;
+  }
+}
+async function cloudPull(force){
+  if(!cloud.cfg||cloud.pulling) return;
+  cloud.pulling=true;
+  setCloudStatus("正在读取云端…","busy");
+  try{
+    var r=await fetch(cloudUrl()+"?ref="+encodeURIComponent(cloud.cfg.branch),{
+      headers:{Authorization:"Bearer "+cloud.cfg.token,Accept:"application/vnd.github+json"},
+      cache:"no-store"
+    });
+    if(r.status===404){
+      cloud.pulling=false;
+      if(watchList.length) await cloudPush();
+      else setCloudStatus("云端还没有 watchlist.json","");
+      return;
+    }
+    if(!r.ok){
+      var j=null; try{ j=await r.json(); }catch(e){}
+      throw new Error((j&&j.message)||("读取失败 HTTP "+r.status));
+    }
+    var file=await r.json();
+    var sha=file.sha||"";
+    if(!force && sha===cloud.cfg.sha){
+      setCloudStatus("已是最新 · "+cloudStamp(),"ok");
+      return;
+    }
+    if(!force && cloud.dirty){
+      setCloudStatus("云端有新版本，本机也有修改；请点“立即上传”或“保存并拉取”","warn");
+      return;
+    }
+    var data=JSON.parse(cloudDecode(file.content));
+    cloudApply(data,sha);
+  }catch(e){
+    setCloudStatus("拉取失败："+(e.message||"网络错误"),"err");
+  }finally{
+    cloud.pulling=false;
+  }
+}
+async function cloudPush(){
+  if(!cloud.cfg||cloud.pushing) return;
+  if(cloud.pulling){ setCloudStatus("正在读取云端，稍后上传","warn"); return; }
+  cloud.pushing=true;
+  setCloudStatus("正在上传云端…","busy");
+  try{
+    var payload=watchPayload();
+    payload.updatedAt=new Date().toISOString();
+    var body={message:"chore: sync watchlist",content:cloudEncode(JSON.stringify(payload,null,2)),branch:cloud.cfg.branch};
+    if(cloud.cfg.sha) body.sha=cloud.cfg.sha;
+    var out;
+    try{
+      out=await cloudApi("PUT",cloudUrl(),body);
+    }catch(e){
+      if(e.status===409||e.status===422){
+        var f=await cloudApi("GET",cloudUrl()+"?ref="+encodeURIComponent(cloud.cfg.branch));
+        cloud.cfg.sha=f.sha;
+        body.sha=f.sha;
+        out=await cloudApi("PUT",cloudUrl(),body);
+      }else throw e;
+    }
+    cloud.cfg.sha=(out&&out.content&&out.content.sha)||"";
+    cloud.dirty=false;
+    cloud.lastAt=Date.now();
+    storeCloudConfig();
+    setCloudStatus("已上传云端 · "+cloudStamp(),"ok");
+  }catch(e){
+    setCloudStatus("上传失败："+(e.message||"网络错误"),"err");
+  }finally{
+    cloud.pushing=false;
+  }
+}
+function scheduleCloudPush(){
+  if(!cloud.cfg||!cloud.cfg.auto) return;
+  clearTimeout(cloud.timer);
+  cloud.timer=setTimeout(function(){ cloudPush(); },1800);
+}
+function markCloudDirty(){
+  cloud.dirty=true;
+  if(cloud.cfg&&cloud.cfg.auto&&!cloud.applying) scheduleCloudPush();
+}
+function openCloud(){
+  if(!cloud.cfg) cloud.cfg=readCloudConfig();
+  $("#cloudToken").value=cloud.cfg?cloud.cfg.token:"";
+  $("#cloudRepo").value=cloud.cfg?cloud.cfg.repo:"jianbin-lim/jianbin-lim.github.io";
+  $("#cloudPath").value=cloud.cfg?cloud.cfg.path:"stock-radar/watchlist.json";
+  $("#cloudBranch").value=cloud.cfg?cloud.cfg.branch:"master";
+  $("#cloudAuto").checked=cloud.cfg?!!cloud.cfg.auto:true;
+  $("#cloudStatus").textContent=cloud.cfg?"已配置："+cloud.cfg.repo+"/"+cloud.cfg.path:"尚未配置云端。";
+  $("#cloudStatus").className="cloud-status";
+  $("#cloudModal").classList.remove("hidden");
+}
+function closeCloud(){ $("#cloudModal").classList.add("hidden"); }
+function saveCloudFromUI(){
+  var token=$("#cloudToken").value.trim();
+  var repo=$("#cloudRepo").value.trim();
+  var path=$("#cloudPath").value.trim().replace(/^\/+/,"");
+  var branch=$("#cloudBranch").value.trim()||"master";
+  if(!token){ setCloudStatus("请填写 GitHub Token","err"); return; }
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ setCloudStatus("仓库格式应为 owner/repo","err"); return; }
+  if(!path||/\.\./.test(path)){ setCloudStatus("文件路径无效","err"); return; }
+  var old=cloud.cfg||{};
+  cloud.cfg={token:token,repo:repo,path:path,branch:branch,auto:$("#cloudAuto").checked,sha:old.repo===repo&&old.path===path?(old.sha||""):""};
+  storeCloudConfig();
+  setCloudStatus("已保存配置，正在读取云端…","busy");
+  cloudPull(true);
+}
+function clearCloud(){
+  if(!window.confirm("清除本机保存的 GitHub Token 和云同步配置？云端 watchlist.json 不会被删除。")) return;
+  cloud.cfg=null;
+  cloud.dirty=false;
+  try{ localStorage.removeItem(CLOUD_KEY); }catch(e){}
+  $("#cloudToken").value="";
+  setCloudStatus("已清除本机云同步配置","");
+  $("#btnCloud").title="云端同步未配置";
+}
+function initCloud(){
+  cloud.cfg=readCloudConfig();
+  if(cloud.cfg){
+    $("#btnCloud").title="云同步："+cloud.cfg.repo+"/"+cloud.cfg.path;
+    if(cloud.cfg.auto) setTimeout(function(){ cloudPull(false); },1200);
+  }
+  setInterval(function(){
+    if(document.hidden||!cloud.cfg||!cloud.cfg.auto||cloud.dirty||cloud.pulling) return;
+    if(Date.now()-cloud.lastAt<60000) return;
+    cloudPull(false);
+  },60000);
 }
 
 /* =========================================================
@@ -2804,6 +3016,12 @@ function bind(){
   $("#btnPredictRefresh").addEventListener("click",function(){ scanPool(false); });
   $("#btnWatchExport").addEventListener("click",exportWatch);
   $("#btnWatchImport").addEventListener("click",function(){ $("#watchFile").click(); });
+  $("#btnCloud").addEventListener("click",openCloud);
+  $("#cloudClose").addEventListener("click",closeCloud);
+  $("#cloudSavePull").addEventListener("click",saveCloudFromUI);
+  $("#cloudPush").addEventListener("click",cloudPush);
+  $("#cloudClear").addEventListener("click",clearCloud);
+  $("#cloudModal").addEventListener("click",function(e){ if(e.target===this) closeCloud(); });
   $("#watchFile").addEventListener("change",async function(){
     var f=this.files&&this.files[0];
     this.value="";
@@ -2998,6 +3216,7 @@ function bind(){
   $("#asofInput").max=localDate;
 }
 function boot(){
+  cloud.cfg=readCloudConfig();
   watchList=readWatch();
   var saved=readPoolCache();
   if(saved){
@@ -3008,8 +3227,10 @@ function boot(){
   bind();
   loadMonitor(false);
   autoLoadRootWatch();
+  initCloud();
   renderPool();
   var p=new URLSearchParams(location.search);
+  if(p.get("cloud")==="1"){ setTimeout(openCloud,300); return; }
   if(p.get("demo")==="1"){ loadDemo(); return; }
   var code=p.get("code");
   if(code){ $("#codeInput").value=code; runAnalyze(code); return; }

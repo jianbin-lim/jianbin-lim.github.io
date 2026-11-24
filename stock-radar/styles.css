@@ -886,3 +886,33 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
   .drag-handle{width:16px}
   .pr-act .ord{width:22px}
 }
+
+/* 云同步 */
+.cloud-modal{position:fixed;inset:0;z-index:120;background:rgba(8,12,18,.52);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:18px}
+.cloud-card{width:min(540px,100%);max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 18px 14px;box-shadow:0 22px 70px rgba(9,18,32,.28)}
+.cloud-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.cloud-kicker{font:600 9px/1.4 var(--num);letter-spacing:1.4px;color:var(--amber2)}
+.cloud-head h3{margin:4px 0 0;font-size:18px;letter-spacing:.2px}
+.cloud-x{width:28px;height:28px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);font-size:18px;line-height:1;color:var(--dim);cursor:pointer}
+.cloud-desc{font-size:11.5px;line-height:1.7;color:var(--dim);margin:10px 0 14px}
+.cloud-desc code{font:11px var(--num);background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:1px 4px}
+.cloud-fields{display:flex;flex-direction:column;gap:10px}
+.cloud-fields label{display:flex;flex-direction:column;gap:5px;font-size:10.5px;color:var(--dim)}
+.cloud-fields input[type=text],.cloud-fields input[type=password]{width:100%;height:34px;border-radius:5px;border:1px solid var(--line2);background:var(--panel2);color:var(--tx);padding:0 9px;font:12px var(--num);outline:none}
+.cloud-fields input:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(77,163,255,.12)}
+.cloud-grid2{display:grid;grid-template-columns:1.6fr .8fr;gap:10px}
+.cloud-check{flex-direction:row!important;align-items:center;gap:7px!important;font-size:11px!important;color:var(--tx)!important}
+.cloud-check input{width:14px;height:14px;accent-color:var(--amber)}
+.cloud-status{min-height:18px;font-size:11px;line-height:1.55;color:var(--dim);margin:12px 0 10px;word-break:break-all}
+.cloud-status.ok{color:var(--green)}.cloud-status.err{color:var(--red)}.cloud-status.warn{color:var(--amber2)}.cloud-status.busy{color:var(--blue2)}
+.cloud-actions{display:flex;gap:8px;flex-wrap:wrap}
+.cloud-actions button{height:31px;padding:0 11px;border-radius:5px;border:1px solid var(--line2);background:var(--panel2);color:var(--tx);font-size:11.5px;cursor:pointer}
+.cloud-actions button:hover{border-color:var(--blue)}
+.cloud-actions .cloud-primary{background:var(--amber);border-color:var(--amber);color:#1b1305;font-weight:700}
+.cloud-warn{font-size:10px;line-height:1.65;color:var(--dim2);margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}
+.cloud-warn b{color:var(--amber2)}
+@media(max-width:560px){
+  .cloud-card{padding:15px 14px 12px;border-radius:10px}
+  .cloud-grid2{grid-template-columns:1fr}
+  .cloud-actions button{flex:1}
+}

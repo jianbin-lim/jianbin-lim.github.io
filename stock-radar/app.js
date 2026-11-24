@@ -562,8 +562,15 @@ function setCloudStatus(msg,tone){
   var btn=$("#btnCloud");
   if(btn) btn.title=msg||"云端同步";
 }
+function normalizeCloudToken(raw){
+  var s=String(raw||"").trim();
+  var m=s.match(/github_pat_[A-Za-z0-9_]+/);
+  if(m) return m[0];
+  m=s.match(/gh[pousr]_[A-Za-z0-9]+/);
+  return m?m[0]:s;
+}
 function cloudConfigFromFields(){
-  var token=$("#cloudToken").value.trim();
+  var token=normalizeCloudToken($("#cloudToken").value);
   var repo=$("#cloudRepo").value.trim();
   var path=$("#cloudPath").value.trim().replace(/^\/+/,"");
   var branch=$("#cloudBranch").value.trim()||"master";
@@ -700,7 +707,8 @@ function saveCloudFromUI(){
   cloudPull(true);
 }
 function uploadCloudFromUI(){
-  if(!cloud.cfg && !applyCloudFields()) return;
+  // 始终以输入框当前值为准，避免改了 Token 后仍用旧的 cloud.cfg 上传
+  if(!applyCloudFields()) return;
   setCloudStatus("已保存配置，正在上传…","busy");
   cloudPush();
 }

@@ -562,6 +562,25 @@ function setCloudStatus(msg,tone){
   var btn=$("#btnCloud");
   if(btn) btn.title=msg||"云端同步";
 }
+function cloudConfigFromFields(){
+  var token=$("#cloudToken").value.trim();
+  var repo=$("#cloudRepo").value.trim();
+  var path=$("#cloudPath").value.trim().replace(/^\/+/,"");
+  var branch=$("#cloudBranch").value.trim()||"master";
+  if(!token){ setCloudStatus("请填写 GitHub Token","err"); return null; }
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ setCloudStatus("仓库格式应为 owner/repo","err"); return null; }
+  if(!path||/\.\./.test(path)){ setCloudStatus("文件路径无效","err"); return null; }
+  var old=cloud.cfg||{};
+  return {token:token,repo:repo,path:path,branch:branch,auto:$("#cloudAuto").checked,
+          sha:(old.repo===repo&&old.path===path)?(old.sha||""):""};
+}
+function applyCloudFields(){
+  var cfg=cloudConfigFromFields();
+  if(!cfg) return null;
+  cloud.cfg=cfg;
+  storeCloudConfig();
+  return cfg;
+}
 function cloudStamp(){
   var d=new Date();
   return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
@@ -584,7 +603,8 @@ function cloudApply(data,sha){
   }
 }
 async function cloudPull(force){
-  if(!cloud.cfg||cloud.pulling) return;
+  if(!cloud.cfg){ setCloudStatus("请先填写 Token，点“保存并拉取”","err"); return; }
+  if(cloud.pulling) return;
   cloud.pulling=true;
   setCloudStatus("正在读取云端…","busy");
   try{
@@ -621,7 +641,8 @@ async function cloudPull(force){
   }
 }
 async function cloudPush(){
-  if(!cloud.cfg||cloud.pushing) return;
+  if(!cloud.cfg){ setCloudStatus("请先填写 Token，再点“立即上传”","err"); return; }
+  if(cloud.pushing) return;
   if(cloud.pulling){ setCloudStatus("正在读取云端，稍后上传","warn"); return; }
   cloud.pushing=true;
   setCloudStatus("正在上传云端…","busy");
@@ -674,18 +695,14 @@ function openCloud(){
 }
 function closeCloud(){ $("#cloudModal").classList.add("hidden"); }
 function saveCloudFromUI(){
-  var token=$("#cloudToken").value.trim();
-  var repo=$("#cloudRepo").value.trim();
-  var path=$("#cloudPath").value.trim().replace(/^\/+/,"");
-  var branch=$("#cloudBranch").value.trim()||"master";
-  if(!token){ setCloudStatus("请填写 GitHub Token","err"); return; }
-  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ setCloudStatus("仓库格式应为 owner/repo","err"); return; }
-  if(!path||/\.\./.test(path)){ setCloudStatus("文件路径无效","err"); return; }
-  var old=cloud.cfg||{};
-  cloud.cfg={token:token,repo:repo,path:path,branch:branch,auto:$("#cloudAuto").checked,sha:old.repo===repo&&old.path===path?(old.sha||""):""};
-  storeCloudConfig();
+  if(!applyCloudFields()) return;
   setCloudStatus("已保存配置，正在读取云端…","busy");
   cloudPull(true);
+}
+function uploadCloudFromUI(){
+  if(!cloud.cfg && !applyCloudFields()) return;
+  setCloudStatus("已保存配置，正在上传…","busy");
+  cloudPush();
 }
 function clearCloud(){
   if(!window.confirm("清除本机保存的 GitHub Token 和云同步配置？云端 watchlist.json 不会被删除。")) return;
@@ -3019,7 +3036,7 @@ function bind(){
   $("#btnCloud").addEventListener("click",openCloud);
   $("#cloudClose").addEventListener("click",closeCloud);
   $("#cloudSavePull").addEventListener("click",saveCloudFromUI);
-  $("#cloudPush").addEventListener("click",cloudPush);
+  $("#cloudPush").addEventListener("click",uploadCloudFromUI);
   $("#cloudClear").addEventListener("click",clearCloud);
   $("#cloudModal").addEventListener("click",function(e){ if(e.target===this) closeCloud(); });
   $("#watchFile").addEventListener("change",async function(){

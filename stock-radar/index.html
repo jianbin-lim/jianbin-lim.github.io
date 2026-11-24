@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>异动雷达 · A股异常波动监测</title>
-<link rel="stylesheet" href="styles.css?v=20261112-7">
+<link rel="stylesheet" href="styles.css?v=20261112-8">
 </head>
 <body>
 <div class="app">
@@ -50,6 +50,7 @@
         <span class="watch-io hidden" id="watchIO">
           <button type="button" class="pool-refresh watch-io" id="btnWatchExport" title="下载 watchlist.json，可放到 index.html 同目录跨设备使用">⇩ 一键导出</button>
           <button type="button" class="pool-refresh watch-io" id="btnWatchImport" title="选择 watchlist.json 恢复分组与关注">⇧ 一键导入</button>
+          <button type="button" class="pool-refresh watch-io" id="btnCloud" title="云端同步未配置">☁ 云同步</button>
           <input type="file" id="watchFile" accept=".json,application/json" hidden>
         </span>
         <button type="button" class="pool-refresh" id="btnPredictRefresh">刷新预测</button>
@@ -212,8 +213,44 @@
 </div>
 
 <div class="group-picker hidden" id="groupPicker"></div>
+<div class="cloud-modal hidden" id="cloudModal">
+  <div class="cloud-card">
+    <div class="cloud-head">
+      <div>
+        <div class="cloud-kicker">WATCH SYNC · 跨设备</div>
+        <h3>关注列表云同步</h3>
+      </div>
+      <button type="button" class="cloud-x" id="cloudClose" title="关闭">×</button>
+    </div>
+    <p class="cloud-desc">把 <code>我的关注</code> 的分组和股票写到 GitHub 仓库的 JSON 文件。每台设备填一次同一个 Token，之后修改会自动上传、定时拉取。</p>
+    <div class="cloud-fields">
+      <label>GitHub Token
+        <input type="password" id="cloudToken" autocomplete="off" placeholder="github_pat_...（Fine-grained，Contents 读写）">
+      </label>
+      <label>仓库
+        <input type="text" id="cloudRepo" autocomplete="off" placeholder="owner/repo">
+      </label>
+      <div class="cloud-grid2">
+        <label>文件路径
+          <input type="text" id="cloudPath" autocomplete="off" placeholder="stock-radar/watchlist.json">
+        </label>
+        <label>分支
+          <input type="text" id="cloudBranch" autocomplete="off" placeholder="master">
+        </label>
+      </div>
+      <label class="cloud-check"><input type="checkbox" id="cloudAuto"> 自动同步（修改后上传，每 60 秒拉取）</label>
+    </div>
+    <div class="cloud-status" id="cloudStatus">尚未配置云端。</div>
+    <div class="cloud-actions">
+      <button type="button" class="cloud-primary" id="cloudSavePull">保存并拉取</button>
+      <button type="button" id="cloudPush">立即上传</button>
+      <button type="button" id="cloudClear">清除令牌</button>
+    </div>
+    <div class="cloud-warn">Token 只保存在本机 localStorage，不会写进页面；建议使用只授权这个仓库 <b>Contents: Read and write</b> 的 Fine-grained Token。若仓库是公开的，watchlist.json 也会公开，请不要放敏感信息。</div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
-<script src="app.js?v=20261112-7"></script>
+<script src="app.js?v=20261112-8"></script>
 </body>
 </html>

@@ -1,0 +1,164 @@
+{
+  "app": "异动雷达",
+  "version": 2,
+  "exportedAt": "2026-11-24T18:23:41.575Z",
+  "groups": [
+    {
+      "id": "g1",
+      "name": "玄学"
+    },
+    {
+      "id": "g2",
+      "name": "机器人"
+    },
+    {
+      "id": "g3",
+      "name": "传媒短剧"
+    },
+    {
+      "id": "gmwtoyat7",
+      "name": "科技-国产"
+    },
+    {
+      "id": "gmwce6vdn",
+      "name": "冰雪经济"
+    },
+    {
+      "id": "gmwce7ekq",
+      "name": "消费"
+    },
+    {
+      "id": "gmwce8f0t",
+      "name": "独立趋势"
+    }
+  ],
+  "activeGroup": "g2",
+  "watchlist": [
+    {
+      "code": "002148",
+      "name": "北纬科技",
+      "group": "g2"
+    },
+    {
+      "code": "301313",
+      "name": "凡拓数创",
+      "group": "g2"
+    },
+    {
+      "code": "301413",
+      "name": "安培龙",
+      "group": "g2"
+    },
+    {
+      "code": "002685",
+      "name": "华东重机",
+      "group": "gmwtoyat7"
+    },
+    {
+      "code": "002771",
+      "name": "真视通",
+      "group": "gmwtoyat7"
+    },
+    {
+      "code": "603324",
+      "name": "盛剑科技",
+      "group": "gmwtoyat7"
+    },
+    {
+      "code": "301391",
+      "name": "卡莱特",
+      "group": "gmwtoyat7"
+    },
+    {
+      "code": "600715",
+      "name": "文投控股",
+      "group": "g3"
+    },
+    {
+      "code": "301052",
+      "name": "果麦文化",
+      "group": "g3"
+    },
+    {
+      "code": "300413",
+      "name": "芒果超媒",
+      "group": "g3"
+    },
+    {
+      "code": "300426",
+      "name": "华智数媒",
+      "group": "g3"
+    },
+    {
+      "code": "301218",
+      "name": "华是科技",
+      "group": "g3"
+    },
+    {
+      "code": "300829",
+      "name": "金丹科技",
+      "group": "gmwce8f0t"
+    },
+    {
+      "code": "001219",
+      "name": "青岛食品",
+      "group": "gmwce7ekq"
+    },
+    {
+      "code": "605488",
+      "name": "福莱新材",
+      "group": "g2"
+    },
+    {
+      "code": "000678",
+      "name": "襄阳轴承",
+      "group": "g2"
+    },
+    {
+      "code": "000995",
+      "name": "皇台酒业",
+      "group": "gmwce7ekq"
+    },
+    {
+      "code": "000530",
+      "name": "冰山冷热",
+      "group": "gmwce6vdn"
+    },
+    {
+      "code": "601188",
+      "name": "龙江交通",
+      "group": "gmwce6vdn"
+    },
+    {
+      "code": "002242",
+      "name": "九阳股份",
+      "group": "g1"
+    },
+    {
+      "code": "002086",
+      "name": "东方海洋",
+      "group": "g1"
+    },
+    {
+      "code": "002708",
+      "name": "光洋股份",
+      "group": "g1"
+    },
+    {
+      "code": "603366",
+      "name": "日出东方",
+      "group": "g1"
+    },
+    {
+      "code": "300006",
+      "name": "莱美药业",
+      "group": "gmwce8f0t"
+    },
+    {
+      "code": "300949",
+      "name": "奥雅股份",
+      "group": "gmwce8f0t"
+    }
+  ],
+  "updatedAt": "2026-11-24T18:23:41.575Z"
+}

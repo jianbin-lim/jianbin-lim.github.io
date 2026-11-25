@@ -1,11 +1,11 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-25T06:41:02.479Z",
+  "exportedAt": "2026-11-25T18:16:36.926Z",
   "groups": [
     {
       "id": "g1",
-      "name": "分组1"
+      "name": "玄学"
     },
     {
       "id": "g2",
@@ -32,7 +32,7 @@
       "name": "独立趋势"
     }
   ],
-  "activeGroup": "gmwce8f0t",
+  "activeGroup": "gmwtoyat7",
   "watchlist": [
     {
       "code": "002148",
@@ -145,11 +145,6 @@
       "group": "g1"
     },
     {
-      "code": "603366",
-      "name": "日出东方",
-      "group": "g1"
-    },
-    {
       "code": "300006",
       "name": "莱美药业",
       "group": "gmwce8f0t"
@@ -160,5 +155,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-25T06:41:02.479Z"
+  "updatedAt": "2026-11-25T18:16:36.926Z"
 }

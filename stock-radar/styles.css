@@ -920,14 +920,15 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
 
 /* 我的关注：开盘啦式行列表 */
 .watch-head,.pool-row.watch-row{
-  grid-template-columns:minmax(190px,1.5fr) 92px 158px 300px 150px;
-  gap:10px;
+  grid-template-columns:minmax(220px,300px) 110px 175px minmax(280px,1fr) 150px;
+  column-gap:26px;
 }
 .watch-head{
-  display:grid;align-items:center;padding:7px 8px 6px;
+  display:grid;align-items:center;padding:8px 12px 7px;
   border-bottom:1px solid var(--line);background:var(--panel2);
   color:var(--dim2);font-size:9.5px;letter-spacing:.2px;
 }
+.pool-row.watch-row{padding:12px}
 .watch-head span:nth-child(2){text-align:right}
 .watch-head span:nth-child(3),.watch-head span:nth-child(4),.watch-head span:nth-child(5){text-align:left}
 .watch-head span:last-child{text-align:left}
@@ -938,6 +939,15 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
 .pool-row.watch-row .pr-id{grid-area:id;min-width:0}
 .pool-row.watch-row .pr-quote{grid-area:quote}
 .pool-row.watch-row .pr-dev{grid-area:dev;border-left:0;padding-left:0}
+.pool-row.watch-row .pr-dev b{
+  display:inline-block;font:700 15px var(--num);line-height:1.45;
+  color:var(--amber2);background:var(--amber-soft);
+  border:1px solid rgba(243,181,68,.3);border-radius:5px;
+  padding:1px 7px;white-space:nowrap;
+}
+.pool-row.watch-row.sev .pr-dev b,.pool-row.watch-row.abn .pr-dev b{
+  color:var(--up2);background:var(--up-soft);border-color:rgba(255,77,87,.3);
+}
 .pool-row.watch-row .pr-progress{grid-area:progress}
 .pool-row.watch-row .pr-act{grid-area:act}
 .pr-progress .trigger-spaces{margin:0}

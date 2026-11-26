@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T19:23:33.171Z",
+  "exportedAt": "2026-11-26T19:23:35.181Z",
   "groups": [
     {
       "id": "g1",
@@ -124,11 +124,6 @@
       "group": "g2"
     },
     {
-      "code": "000530",
-      "name": "冰山冷热",
-      "group": "gmwce6vdn"
-    },
-    {
       "code": "601188",
       "name": "龙江交通",
       "group": "gmwce6vdn"
@@ -154,5 +149,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T19:23:33.171Z"
+  "updatedAt": "2026-11-26T19:23:35.181Z"
 }

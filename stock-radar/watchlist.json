@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T18:59:03.718Z",
+  "exportedAt": "2026-11-26T18:59:10.522Z",
   "groups": [
     {
       "id": "g1",
@@ -38,6 +38,11 @@
   ],
   "activeGroup": "gmwtoyat7",
   "watchlist": [
+    {
+      "code": "002685",
+      "name": "华东重机",
+      "group": "gmwtoyat7"
+    },
     {
       "code": "603030",
       "name": "全筑股份",
@@ -77,11 +82,6 @@
       "code": "301413",
       "name": "安培龙",
       "group": "g2"
-    },
-    {
-      "code": "002685",
-      "name": "华东重机",
-      "group": "gmwtoyat7"
     },
     {
       "code": "603324",
@@ -154,5 +154,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T18:59:03.718Z"
+  "updatedAt": "2026-11-26T18:59:10.522Z"
 }

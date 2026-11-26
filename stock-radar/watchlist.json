@@ -1,11 +1,11 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T07:01:38.727Z",
+  "exportedAt": "2026-11-26T15:29:16.202Z",
   "groups": [
     {
       "id": "g1",
-      "name": "玄字辈"
+      "name": "玄学"
     },
     {
       "id": "g2",
@@ -32,7 +32,7 @@
       "name": "独立趋势"
     }
   ],
-  "activeGroup": "g1",
+  "activeGroup": "g2",
   "watchlist": [
     {
       "code": "002148",
@@ -155,5 +155,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T07:01:38.727Z"
+  "updatedAt": "2026-11-26T15:29:16.202Z"
 }

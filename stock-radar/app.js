@@ -1179,7 +1179,8 @@ function nearestCheck(a){
   if(hit) return hit;
   function gap(c){
     var line=c.value<0?-(c.id==="d10"?50:70):(c.id==="d10"?100:200);
-    return Math.abs(line-c.value);
+    var sp=spaceFromDev(c.value,line);
+    return sp==null?Infinity:Math.abs(sp);
   }
   return withData.slice().sort(function(x,y){ return gap(x)-gap(y); })[0];
 }

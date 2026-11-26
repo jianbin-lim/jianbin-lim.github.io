@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T18:19:28.738Z",
+  "exportedAt": "2026-11-26T18:19:56.899Z",
   "groups": [
     {
       "id": "g1",
@@ -38,6 +38,11 @@
   ],
   "activeGroup": "g2",
   "watchlist": [
+    {
+      "code": "603960",
+      "name": "克来机电",
+      "group": "g2"
+    },
     {
       "code": "600814",
       "name": "杭州解百",
@@ -144,5 +149,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T18:19:28.738Z"
+  "updatedAt": "2026-11-26T18:19:56.899Z"
 }

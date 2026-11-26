@@ -38,6 +38,10 @@ function nowHm(){
   var d=new Date();
   return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
 }
+function isPreOpenNow(){
+  var d=new Date(), wd=d.getDay();
+  return wd===0||wd===6||nowHm()<"09:15";
+}
 function fmtPrice(v){
   if(v==null||!Number.isFinite(Number(v))) return "—";
   return Number(v).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -1257,12 +1261,14 @@ async function evaluatePoolItem(item){
   var idx=await loadKlineQuick(idxInfo,60);
   if(!idx||!idx.rows.length) throw new Error("指数日K拉取失败");
   var rows=stock.rows.slice(-45);
+  var today=todayYmd();
+  if(isPreOpenNow()) rows=rows.filter(function(r){ return r.date<today; });
   if(rows.length<8) throw new Error("上市时间太短");
   var maxDate=rows[rows.length-1].date;
   var idxRows=idx.rows.filter(function(r){ return r.date<=maxDate; }).slice(-60);
   if(idxRows.length<8) throw new Error("指数数据不足");
   var minfo=monitorInfoFor(item.code);
-  var mstart=minfo.active&&minfo.start<=maxDate?minfo.start:"";
+  var mstart=minfo.start&&minfo.start<=maxDate?minfo.start:"";
   if(mstart){
     rows=rows.filter(function(r){ return r.date>=mstart; });
     idxRows=idxRows.filter(function(r){ return r.date>=mstart; });
@@ -1272,9 +1278,8 @@ async function evaluatePoolItem(item){
   // 盘口价已经属于今天：补一根当日K线，让预测按现价而不是昨收计算。
   // 指数当天涨跌在盘口接口里不可得，这里按 0 处理，只用于池内快速预测；
   // 点开个股后会拉腾讯实时指数，结果以个股详情为准。
-  var today=todayYmd();
   var lastRow=rows[rows.length-1];
-  if(item.price>0 && lastRow.date<today){
+  if(item.price>0 && lastRow.date<today && !isPreOpenNow()){
     var prev=lastRow.close;
     var livePct=item.pct!=null?item.pct:(prev?(item.price/prev-1)*100:0);
     rows=rows.concat([{date:today,open:prev,high:item.price,low:prev,close:item.price,volume:0,pct:livePct,turnover:null}]);
@@ -1293,7 +1298,8 @@ async function evaluatePoolItem(item){
   var last=a.last;
   var pct=item.pct!=null?item.pct:last.pct;
   var bestRange=best?(best.id==="d10"?a.range10:a.range30):null;
-  var sp=best?requiredSpaceAt(a,best,0):{space:null,hit:false};
+  var sp=best?{space:triggerSpace(best),hit:false}:{space:null,hit:false};
+  if(sp.space!=null&&sp.space<=0) sp.hit=true;
   // 30 日窗口更长，收盘后旧高点基数的影响更大；若当天空间仍小于涨停幅度，
   // 用下一交易日的滚动窗口再核一次，避免“上面小于10%、下面+10%却不触发”的矛盾。
   if(best&&best.id==="d30"&&sp.space!=null&&sp.space<th.limit&&!sp.hit){
@@ -1477,7 +1483,7 @@ function monitorInfoFor(code){
 }
 function monitorStartFor(code){
   var info=monitorInfoFor(code);
-  return info.active?info.start:"";
+  return info.start||"";
 }
 async function ensureMonitor(){
   if(monitor.items.length) return;
@@ -1784,7 +1790,7 @@ function maxIntervalRange(daily,w){
 // 未来 10 个交易日：指数不动、逐日取“不触发价格异动”的最大单日涨幅
 function futurePlan(daily,opt){
   var last=daily.length-1;
-  if(last<30||daily[last].idxClose==null) return [];
+  if(last<10||daily[last].idxClose==null) return [];
   var closes=daily.map(function(d){return d.close;});
   var idxCloses=daily.map(function(d){return d.idxClose;});
   var idxLast=daily[last].idxClose;
@@ -1800,7 +1806,8 @@ function futurePlan(daily,opt){
     function bestBase(w){
       // 10日最大涨幅：在最近 w 个交易日里找“起点到当前”涨幅最大的基准日
       // 10日/30日窗口随未来日滚动：每天只看最近 w 个交易日
-      var from=Math.max(1,i-w+1), best=-1, bestGain=-Infinity;
+      var from=i-w+1, best=-1, bestGain=-Infinity;
+      if(from<1) return -1;
       for(var s=from;s<=i;s++){
         var b=s-1;
         if(b<0||closes[b]==null||!closes[b]) continue;
@@ -2158,7 +2165,7 @@ function render(data){
         '<button type="button" class="watch-inline'+(isWatched(q.code)?" on":"")+'" data-watch-code="'+esc(q.code)+'" data-watch-name="'+esc(name)+'">'+(isWatched(q.code)?"★ 已关注":"＋ 关注")+'</button>'+
       '</div>'+
       '<div class="stock-date">'+(rt?(closed?'收盘':'实时')+' <b style="color:var(--tx2)">'+esc(rt.date)+' '+esc(rt.time)+'</b>':'数据截至 <b style="color:var(--tx2)">'+esc(last.date)+'</b>')+' · '+esc(setSourceNote(s))+
-        (rt?(closed?' · 腾讯行情':' · 实时腾讯'):'')+(a.missingIndex&&!rt?' · 指数缺失 '+a.missingIndex+' 日':'')+(a.monitorReset?' · 监管重置 '+esc(a.monitorReset):(a.monitorExit?' · 已出监管 '+esc(a.monitorExit):''))+
+        (rt?(closed?' · 腾讯行情':' · 实时腾讯'):'')+(a.missingIndex&&!rt?' · 指数缺失 '+a.missingIndex+' 日':'')+(a.monitorReset?' · 监管重置 '+esc(a.monitorReset):'')+(a.monitorExit?' · 已出监管 '+esc(a.monitorExit):'')+
       '</div>'+
     '</div>'+
     '<div class="stock-quote">'+
@@ -2187,7 +2194,7 @@ function renderVerdict(a,last){
     ('数据截至 <b>'+esc(last.date)+'</b><br>最近异动 <b>'+(a.lastEvent?esc(a.lastEvent.triggerDate):"—")+'</b>');
   var desc=a.desc;
   if(rt) desc="今日开盘至今 "+fmtPct(rt.openPct)+"（今开 "+fmtPrice(rt.open)+" → "+(closed?"收盘 ":"现价 ")+fmtPrice(rt.price)+"）。"+desc;
-  if(a.monitorReset) desc="已按监管起点 "+a.monitorReset+" 重新计算，之前涨幅不再计入。"+desc;
+  if(a.monitorReset) desc="已按监管起点 "+a.monitorReset+" 重新计算，之前涨幅不再计入。"+(a.monitorExit?"监管期已于 "+a.monitorExit+" 结束。":"")+desc;
   else if(a.monitorExit) desc="监管期已于 "+a.monitorExit+" 结束；按正常周期计算，历史涨幅不重置。"+desc;
   $("#verdict").innerHTML=
     '<div class="verdict '+a.level+'">'+
@@ -2920,14 +2927,15 @@ async function runAnalyze(code,opts){
       try{ stock.name=await loadSinaQuoteName(info)||stock.name; }catch(e){}
     }
     var asof=$("#asofInput").value;
-    var rows=stock.rows;
+    var rows=stock.rows, today=todayYmd();
+    if(!asof && isPreOpenNow()) rows=rows.filter(function(r){ return r.date<today; });
     if(asof) rows=rows.filter(function(r){ return r.date<=asof; });
     if(rows.length<8) throw new Error("截止 "+asof+" 的有效交易日不足 8 天，无法计算。");
     var maxDate=rows[rows.length-1].date;
     var idxRows=idx.rows.filter(function(r){ return r.date<=maxDate; });
     if(idxRows.length<8) throw new Error("对应指数在截止日前的数据不足。");
     var minfo=monitorInfoFor(info.code);
-    var mstart=minfo.active&&minfo.start<=maxDate&&(!asof||minfo.start<=asof)?minfo.start:"";
+    var mstart=minfo.start&&minfo.start<=maxDate&&(!asof||minfo.start<=asof)?minfo.start:"";
     if(mstart){
       rows=rows.filter(function(r){ return r.date>=mstart; });
       idxRows=idxRows.filter(function(r){ return r.date>=mstart; });

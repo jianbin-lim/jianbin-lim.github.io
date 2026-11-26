@@ -920,7 +920,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
 
 /* 我的关注：开盘啦式行列表 */
 .watch-head,.pool-row.watch-row{
-  grid-template-columns:minmax(190px,1.5fr) 92px 158px 280px 150px 150px;
+  grid-template-columns:minmax(190px,1.5fr) 92px 158px 300px 150px;
   gap:10px;
 }
 .watch-head{
@@ -932,31 +932,25 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
 .watch-head span:nth-child(3),.watch-head span:nth-child(4),.watch-head span:nth-child(5){text-align:left}
 .watch-head span:last-child{text-align:left}
 .pool-row.watch-row{
-  grid-template-areas:"id quote dev progress sector act";
+  grid-template-areas:"id quote dev progress act";
   align-items:center;
 }
 .pool-row.watch-row .pr-id{grid-area:id;min-width:0}
 .pool-row.watch-row .pr-quote{grid-area:quote}
 .pool-row.watch-row .pr-dev{grid-area:dev;border-left:0;padding-left:0}
 .pool-row.watch-row .pr-progress{grid-area:progress}
-.pool-row.watch-row .pr-signal{grid-area:sector}
 .pool-row.watch-row .pr-act{grid-area:act}
 .pr-progress .trigger-spaces{margin:0}
-.watch-sector{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start;min-width:0}
-.sector-tag{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-size:9.5px;line-height:1.5;color:var(--blue2);border:1px solid var(--line2);
-  background:var(--panel2);border-radius:4px;padding:1px 5px}
-.sector-tag.group{color:var(--amber2);border-color:rgba(243,181,68,.3);background:var(--amber-soft)}
 @media(max-width:1120px){
   .watch-head{display:none}
   .pool-row.watch-row{
-    grid-template-columns:minmax(150px,1.4fr) 80px 145px minmax(220px,1.3fr) 120px;
-    grid-template-areas:"id quote dev progress sector" "id quote dev progress act";
+    grid-template-columns:minmax(150px,1.4fr) 80px 145px minmax(220px,1.3fr);
+    grid-template-areas:"id quote dev progress" "id quote dev act";
   }
 }
 @media(max-width:760px){
   .pool-row.watch-row{
     grid-template-columns:1fr;
-    grid-template-areas:"id" "quote" "dev" "progress" "sector" "act";
+    grid-template-areas:"id" "quote" "dev" "progress" "act";
   }
 }

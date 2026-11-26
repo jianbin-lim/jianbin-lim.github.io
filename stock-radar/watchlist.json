@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T18:29:17.637Z",
+  "exportedAt": "2026-11-26T18:29:28.677Z",
   "groups": [
     {
       "id": "g1",
@@ -104,11 +104,6 @@
       "group": "gmwce8f0t"
     },
     {
-      "code": "001219",
-      "name": "青岛食品",
-      "group": "gmwce7ekq"
-    },
-    {
       "code": "605488",
       "name": "福莱新材",
       "group": "g2"
@@ -149,5 +144,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T18:29:17.637Z"
+  "updatedAt": "2026-11-26T18:29:28.677Z"
 }

@@ -1268,6 +1268,13 @@ async function evaluatePoolItem(item){
   var idxRows=idx.rows.filter(function(r){ return r.date<=maxDate; }).slice(-60);
   if(idxRows.length<8) throw new Error("指数数据不足");
   var minfo=monitorInfoFor(item.code);
+  var mstart=minfo.start&&minfo.start<=maxDate?minfo.start:"";
+  if(mstart){
+    var zr=rows.filter(function(r){ return r.date>=mstart; });
+    var zi=idxRows.filter(function(r){ return r.date>=mstart; });
+    if(zr.length>=8&&zi.length>=8){ rows=zr; idxRows=zi; }
+    else mstart="";
+  }
   var mexit=minfo.exited?minfo.end:"";
   // 盘口价已经属于今天：补一根当日K线，让预测按现价而不是昨收计算。
   // 指数当天涨跌在盘口接口里不可得，这里按 0 处理，只用于池内快速预测；
@@ -1476,7 +1483,8 @@ function monitorInfoFor(code){
   return {start:start,end:end,active:!!(start&&start<=today&&!exited),exited:exited};
 }
 function monitorStartFor(code){
-  return "";
+  var info=monitorInfoFor(code);
+  return info.start||"";
 }
 async function ensureMonitor(){
   if(monitor.items.length) return;
@@ -2930,7 +2938,13 @@ async function runAnalyze(code,opts){
     var idxRows=idx.rows.filter(function(r){ return r.date<=maxDate; });
     if(idxRows.length<8) throw new Error("对应指数在截止日前的数据不足。");
     var minfo=monitorInfoFor(info.code);
-    var mstart="";
+    var mstart=minfo.start&&minfo.start<=maxDate&&(!asof||minfo.start<=asof)?minfo.start:"";
+    if(mstart){
+      var zr=rows.filter(function(r){ return r.date>=mstart; });
+      var zi=idxRows.filter(function(r){ return r.date>=mstart; });
+      if(zr.length>=8&&zi.length>=8){ rows=zr; idxRows=zi; }
+      else mstart="";
+    }
     var mexit=minfo.exited?minfo.end:"";
     var name=stock.name||info.code;
     var isST=/ST/i.test(name);

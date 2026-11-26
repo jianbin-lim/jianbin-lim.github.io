@@ -42,6 +42,10 @@ function fmtPrice(v){
   if(v==null||!Number.isFinite(Number(v))) return "—";
   return Number(v).toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2});
 }
+function roundPrice(v){
+  var x=Number(v);
+  return Number.isFinite(x)?Math.round(x*100)/100:null;
+}
 function cls(v){ var x=Number(v); return x>0?"up":(x<0?"dn":"dm"); }
 function toneCls(v){ var x=Number(v); return x>0?"up":(x<0?"dn":"amber"); }
 function pctWidth(p){ return clamp(p*100,0,100).toFixed(1)+"%"; }
@@ -1824,7 +1828,7 @@ function futurePlan(daily,opt){
     var safePx=Math.min(cap,maxP);
     var zeroOver=safePx<prev;
     var px=Math.max(prev,safePx);
-    var gain=(px/prev-1)*100;
+    var gain=(roundPrice(px)/roundPrice(prev)-1)*100;
     closes[i]=px;
     idxCloses[i]=idxLast;
     function devAt(w){
@@ -2267,8 +2271,8 @@ function buildTodayRow(a){
   row.zeroOver=maxPx<cur;
   if(row.zeroOver){ maxPx=cur; binding="已越线"; }
   row.maxPrice=maxPx;
-  row.gain=(maxPx/prev-1)*100;
-  row.remaining=(maxPx/cur-1)*100;
+  row.gain=(roundPrice(maxPx)/roundPrice(prev)-1)*100;
+  row.remaining=(roundPrice(maxPx)/roundPrice(cur)-1)*100;
   row.binding=binding; row.bindCol=bindCol;
   if(idxLast!=null){
     [[10,"d10"],[30,"d30"]].forEach(function(t){
@@ -2461,8 +2465,9 @@ function poolRowHtml(x){
       var tone=hit?"up":(st==="near"?"amber":"dm");
       var price=null, show=val;
       if(!hit && val!=null && x.price>0){
-        price=Math.round(x.price*(1+val/100)*100)/100;
-        show=Math.round((price/x.price-1)*10000)/100;
+        var basePx=roundPrice(x.price);
+        price=roundPrice(basePx*(1+val/100));
+        show=Math.round((price/basePx-1)*10000)/100;
       }
       return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(overLimit?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(show)+(overLimit?"*":"")))+'</b>'+
         (price!=null?'<small class="space-price" title="按现价 × (1+所需涨幅) 估算">触发价 ¥'+fmtPrice(price)+'</small>':'')+

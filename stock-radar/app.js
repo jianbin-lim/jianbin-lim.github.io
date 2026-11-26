@@ -2459,7 +2459,14 @@ function poolRowHtml(x){
       var lim=Number(x.limit)||(/^(30|68)/.test(x.code)?20:10);
       var overLimit=val!=null&&val>lim+0.001;
       var tone=hit?"up":(st==="near"?"amber":"dm");
-      return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(overLimit?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(val)+(overLimit?"*":"")))+'</b><small>'+esc(x.spaceRule)+'</small></div>';
+      var price=null, show=val;
+      if(!hit && val!=null && x.price>0){
+        price=Math.round(x.price*(1+val/100)*100)/100;
+        show=Math.round((price/x.price-1)*10000)/100;
+      }
+      return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(overLimit?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(show)+(overLimit?"*":"")))+'</b>'+
+        (price!=null?'<small class="space-price" title="按现价 × (1+所需涨幅) 估算">触发价 ¥'+fmtPrice(price)+'</small>':'')+
+        '<small>'+esc(x.spaceRule)+'</small></div>';
     };
     spaceHtml='<div class="pr-progress"><div class="trigger-spaces">'+spaceCell("当日触发",x.space,x.spaceHit)+spaceCell("次日触发",x.nextSpace,x.nextSpaceHit)+'</div></div>';
   }

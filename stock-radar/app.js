@@ -1228,7 +1228,7 @@ function requiredSpaceAt(a,check,offset){
   }
   var dev0=devAt(0);
   if(dev0==null) return {space:null,hit:false};
-  if(dev0>=line) return {space:0,hit:true,dev:dev0};
+  if(dev0>=line) return {space:0,raw:0,hit:true,dev:dev0};
   var lo=0, hi=100;
   while(devAt(hi)<line){
     hi*=2;
@@ -1238,7 +1238,7 @@ function requiredSpaceAt(a,check,offset){
     var mid=(lo+hi)/2;
     if(devAt(mid)>=line) hi=mid; else lo=mid;
   }
-  return {space:Math.round(hi*100)/100,hit:false,dev:dev0};
+  return {space:Math.round(hi*100)/100,raw:hi,hit:false,dev:dev0};
 }
 function poolStatusOf(a,best){
   var focusHit=a.checks.some(function(c){ return c.group==="sev"&&c.hit; });
@@ -1308,9 +1308,9 @@ async function evaluatePoolItem(item){
     progress:best?best.progress:0,
     nearestLabel:best?best.label:"—", nearestValue:best?best.valueText:"—",
     nearestThreshold:best?best.thresholdText:"—", nearestRange:fmtRange(bestRange),
-    space:sp.space, spaceRule:best?triggerRule(best):"", spaceHit:!!sp.hit,
+    space:sp.space, spaceRaw:sp.raw, spaceRule:best?triggerRule(best):"", spaceHit:!!sp.hit,
     limit:th.limit,
-    nextSpace:nsp.space, nextSpaceHit:!!nsp.hit,
+    nextSpace:nsp.space, nextSpaceRaw:nsp.raw, nextSpaceHit:!!nsp.hit,
     monitorReset:a.monitorReset||"", monitorExit:mexit,
     foot:best?best.foot:"数据不足", analysis:a, error:""
   };
@@ -1323,8 +1323,8 @@ function compactPoolItem(x){
     nearestLabel:x.nearestLabel,nearestValue:x.nearestValue,
     nearestThreshold:x.nearestThreshold,nearestRange:x.nearestRange||"",
     limit:x.limit,
-    space:x.space,spaceRule:x.spaceRule||"",spaceHit:!!x.spaceHit,
-    nextSpace:x.nextSpace,nextSpaceHit:!!x.nextSpaceHit,monitorReset:x.monitorReset||"",monitorExit:x.monitorExit||"",foot:x.foot,error:x.error||""
+    space:x.space,spaceRaw:x.spaceRaw,spaceRule:x.spaceRule||"",spaceHit:!!x.spaceHit,
+    nextSpace:x.nextSpace,nextSpaceRaw:x.nextSpaceRaw,nextSpaceHit:!!x.nextSpaceHit,monitorReset:x.monitorReset||"",monitorExit:x.monitorExit||"",foot:x.foot,error:x.error||""
   };
 }
 function cachePool(){
@@ -2457,21 +2457,23 @@ function poolRowHtml(x){
   var isWatch=pool.mode==="watch";
   var spaceHtml="";
   if(pool.mode==="watch" && x.space!=null){
-    var spaceCell=function(label,val,hit){
+    var spaceCell=function(label,val,hit,rawVal){
       var lim=Number(x.limit)||(/^(30|68)/.test(x.code)?20:10);
-      var overLimit=val!=null&&val>lim+0.001;
       var tone=hit?"up":(st==="near"?"amber":"dm");
       var price=null, show=val;
       if(!hit && val!=null && x.price>0){
         var basePx=roundPrice(x.price);
-        price=roundPrice(basePx*(1+val/100));
+        var raw=rawVal==null?val:rawVal;
+        // 触发价向上取到分：保证显示价达到/超过红线，而不是四舍五入后差一分不触发。
+        price=Math.ceil(basePx*(1+raw/100)*100-1e-6)/100;
         show=Math.round((price/basePx-1)*10000)/100;
       }
+      var overLimit=show!=null&&show>lim+0.001;
       return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(overLimit?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(show)+(overLimit?"*":"")))+'</b>'+
-        (price!=null?'<small class="space-price" title="按现价 × (1+所需涨幅) 估算">触发价 ¥'+fmtPrice(price)+'</small>':'')+
+        (price!=null?'<small class="space-price" title="触发价向上取整到分，达到该价即触发">触发价 ¥'+fmtPrice(price)+'</small>':'')+
         '<small>'+esc(x.spaceRule)+'</small></div>';
     };
-    spaceHtml='<div class="pr-progress"><div class="trigger-spaces">'+spaceCell("T+0触发",x.space,x.spaceHit)+spaceCell("T+1触发",x.nextSpace,x.nextSpaceHit)+'</div></div>';
+    spaceHtml='<div class="pr-progress"><div class="trigger-spaces">'+spaceCell("T+0触发",x.space,x.spaceHit,x.spaceRaw)+spaceCell("T+1触发",x.nextSpace,x.nextSpaceHit,x.nextSpaceRaw)+'</div></div>';
   }
   var order="";
   if(pool.mode==="watch"){

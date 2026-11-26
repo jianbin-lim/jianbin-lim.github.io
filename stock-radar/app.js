@@ -2471,7 +2471,7 @@ function poolRowHtml(x){
       var overLimit=show!=null&&show>lim+0.001;
       return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(overLimit?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(show)+(overLimit?"*":"")))+'</b>'+
         (price!=null?'<small class="space-price" title="触发价向上取整到分，达到该价即触发">触发价 ¥'+fmtPrice(price)+'</small>':'')+
-        '<small>'+esc(x.spaceRule)+'</small></div>';
+        '<small class="space-rule">'+esc(x.spaceRule)+'</small></div>';
     };
     spaceHtml='<div class="pr-progress"><div class="trigger-spaces">'+spaceCell("T+0触发",x.space,x.spaceHit,x.spaceRaw)+spaceCell("T+1触发",x.nextSpace,x.nextSpaceHit,x.nextSpaceRaw)+'</div></div>';
   }
@@ -2488,7 +2488,7 @@ function poolRowHtml(x){
     '</div>'+
     '<div class="pr-quote"><b class="'+cls(pct)+'">'+fmtPct(pct)+'</b><span>'+(x.price==null?"—":"¥"+fmtPrice(x.price))+'</span></div>'+
     (isWatch?"":('<div class="pr-signal"><span class="evtag '+evCls+'" title="'+esc(ev)+'">'+esc(ev)+'</span><small>'+esc(x.eventTime||"盘中")+'</small></div>'))+
-    '<div class="pr-dev"><b class="'+(st==="sev"||st==="abn"?"up":st==="near"?"amber":"dm")+'">'+esc(x.nearestValue||"—")+'</b><small>'+esc(x.nearestLabel||"最近红线")+' · '+esc(x.nearestThreshold||"")+(x.nearestRange?'<br>最大区间 '+esc(x.nearestRange):'')+'</small></div>'+
+    '<div class="pr-dev"><b class="'+(st==="sev"||st==="abn"?"up":st==="near"?"amber":"dm")+'">'+esc(x.nearestValue||"—")+'</b><small>'+(/最大涨幅/.test(x.nearestLabel||"")?'<em class="dev-term">'+esc(x.nearestLabel)+'</em>':esc(x.nearestLabel||"最近红线"))+' · '+esc(x.nearestThreshold||"")+(x.nearestRange?'<br>最大区间 '+esc(x.nearestRange):'')+'</small></div>'+
     (spaceHtml || '<div class="pr-progress"><div class="pbar"><i style="width:'+barW.toFixed(1)+'%"></i></div><small>'+esc(foot)+'</small><small class="today-flag">'+esc(todayTxt)+'</small></div>')+
     '<div class="pr-act">'+order+
       '<button type="button" class="add'+(watched?" on":"")+'" data-watch-code="'+esc(x.code)+'" data-watch-name="'+esc(x.name||"")+'">'+(watched?(pool.mode==="watch"?"移除":"★ 已关注"):"＋ 关注")+'</button>'+

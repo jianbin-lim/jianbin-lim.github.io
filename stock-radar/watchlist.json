@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T18:19:56.899Z",
+  "exportedAt": "2026-11-26T18:22:00.455Z",
   "groups": [
     {
       "id": "g1",
@@ -36,8 +36,13 @@
       "name": "独立趋势"
     }
   ],
-  "activeGroup": "g2",
+  "activeGroup": "gmwxudigf",
   "watchlist": [
+    {
+      "code": "002548",
+      "name": "金新农",
+      "group": "gmwxudigf"
+    },
     {
       "code": "603960",
       "name": "克来机电",
@@ -149,5 +154,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T18:19:56.899Z"
+  "updatedAt": "2026-11-26T18:22:00.455Z"
 }

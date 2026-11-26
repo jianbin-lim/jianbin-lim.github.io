@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T17:44:17.496Z",
+  "exportedAt": "2026-11-26T17:44:20.596Z",
   "groups": [
     {
       "id": "g1",
@@ -24,16 +24,16 @@
       "name": "冰雪经济"
     },
     {
+      "id": "gmwxudigf",
+      "name": "农业+养殖+水产"
+    },
+    {
       "id": "gmwce7ekq",
       "name": "消费"
     },
     {
       "id": "gmwce8f0t",
       "name": "独立趋势"
-    },
-    {
-      "id": "gmwxudigf",
-      "name": "农业+养殖+水产"
     }
   ],
   "activeGroup": "gmwxudigf",
@@ -139,5 +139,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T17:44:17.496Z"
+  "updatedAt": "2026-11-26T17:44:20.596Z"
 }

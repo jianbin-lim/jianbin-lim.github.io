@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T19:33:32.639Z",
+  "exportedAt": "2026-11-26T19:33:37.874Z",
   "groups": [
     {
       "id": "g1",
@@ -39,13 +39,13 @@
   "activeGroup": "g2",
   "watchlist": [
     {
-      "code": "605018",
-      "name": "长华集团",
+      "code": "603960",
+      "name": "克来机电",
       "group": "g2"
     },
     {
-      "code": "603960",
-      "name": "克来机电",
+      "code": "605018",
+      "name": "长华集团",
       "group": "g2"
     },
     {
@@ -159,5 +159,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T19:33:32.639Z"
+  "updatedAt": "2026-11-26T19:33:37.874Z"
 }

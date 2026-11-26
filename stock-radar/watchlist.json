@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T18:25:25.067Z",
+  "exportedAt": "2026-11-26T18:29:17.637Z",
   "groups": [
     {
       "id": "g1",
@@ -119,11 +119,6 @@
       "group": "g2"
     },
     {
-      "code": "000995",
-      "name": "皇台酒业",
-      "group": "gmwce7ekq"
-    },
-    {
       "code": "000530",
       "name": "冰山冷热",
       "group": "gmwce6vdn"
@@ -154,5 +149,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T18:25:25.067Z"
+  "updatedAt": "2026-11-26T18:29:17.637Z"
 }

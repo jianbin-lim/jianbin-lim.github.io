@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T19:23:35.181Z",
+  "exportedAt": "2026-11-26T19:23:46.083Z",
   "groups": [
     {
       "id": "g1",
@@ -36,8 +36,13 @@
       "name": "独立趋势"
     }
   ],
-  "activeGroup": "gmwce6vdn",
+  "activeGroup": "g1",
   "watchlist": [
+    {
+      "code": "000530",
+      "name": "冰山冷热",
+      "group": "g1"
+    },
     {
       "code": "002685",
       "name": "华东重机",
@@ -149,5 +154,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T19:23:35.181Z"
+  "updatedAt": "2026-11-26T19:23:46.083Z"
 }

@@ -256,8 +256,8 @@ button{cursor:pointer}
 .pool-row.predict.next .pbar i{background:linear-gradient(90deg,#4da3ff,#77c4ff)}
 .pool-row.predict.today .pbar i{background:linear-gradient(90deg,#ff8a50,#ff5a5f)}
 .pool-row.predict .today-flag{color:var(--dim);margin-top:1px}
-.pool-row.predict{grid-template-columns:minmax(210px,1.6fr) 172px 180px 158px 155px;grid-template-areas:"id quote dev progress act"}
-.pool-row.predict .pr-id{grid-area:id}.pool-row.predict .pr-quote{grid-area:quote}.pool-row.predict .pr-dev{grid-area:dev}.pool-row.predict .pr-progress{grid-area:progress}.pool-row.predict .pr-act{grid-area:act}
+.pool-row.predict{grid-template-columns:minmax(220px,1.6fr) 220px 220px 155px;grid-template-areas:"id quote dev act"}
+.pool-row.predict .pr-id{grid-area:id}.pool-row.predict .pr-quote{grid-area:quote}.pool-row.predict .pr-dev{grid-area:dev}.pool-row.predict .pr-act{grid-area:act}
 .pool-row.predict .pr-dev{border-left:1px dashed rgba(43,53,70,.8);padding-left:12px}
 .pred-cap{display:inline-block;font:400 10px var(--num);letter-spacing:normal;margin:1px 0 0;color:var(--dim2);background:none;border:0;border-radius:0;padding:0}
 .pred-cap.quote-cap{color:var(--dim2)}
@@ -267,7 +267,7 @@ button{cursor:pointer}
 .pr-quote .pred-x{font-size:9.5px!important;color:#9dc9ff!important;font-weight:600}
 .pr-quote .pred-range{font-size:9px!important;padding:1px 4px;color:var(--amber2)!important;background:rgba(243,181,68,.055);border-color:rgba(243,181,68,.22)}
 /* 今日 / 次日两块使用完全相同的字号、价格标签和区间样式 */
-.pool-row.predict{grid-template-columns:minmax(210px,1.6fr) 180px 180px 158px 155px}
+.pool-row.predict{grid-template-columns:minmax(220px,1.6fr) 230px 230px 155px}
 .pool-row.predict .pr-quote,.pool-row.predict .pr-dev{padding:4px 8px}
 .pool-row.predict .pr-quote{text-align:left;align-items:flex-start}
 .pool-row.predict .pq-line{justify-content:flex-start}
@@ -293,8 +293,8 @@ button{cursor:pointer}
   .pr-act{grid-column:5;justify-content:flex-end}
   .pool-row{grid-template-areas:"id quote signal dev progress" "id quote signal dev act"}
   .pr-id{grid-area:id}.pr-quote{grid-area:quote}.pr-signal{grid-area:signal}.pr-dev{grid-area:dev}.pr-progress{grid-area:progress}.pr-act{grid-area:act}
-  .pool-row.predict{grid-template-columns:minmax(150px,1.3fr) 158px 168px 130px;grid-template-areas:"id quote dev progress" "id quote dev act";gap:8px 10px}
-  .pool-row.predict .pr-id{grid-area:id}.pool-row.predict .pr-quote{grid-area:quote}.pool-row.predict .pr-dev{grid-area:dev}.pool-row.predict .pr-progress{grid-area:progress}.pool-row.predict .pr-act{grid-area:act;grid-column:auto}
+  .pool-row.predict{grid-template-columns:minmax(150px,1.3fr) 170px 180px 135px;grid-template-areas:"id quote dev act";gap:8px 10px}
+  .pool-row.predict .pr-id{grid-area:id}.pool-row.predict .pr-quote{grid-area:quote}.pool-row.predict .pr-dev{grid-area:dev}.pool-row.predict .pr-act{grid-area:act;grid-column:auto}
 }
 @media(max-width:760px){
   .radar{margin-top:16px}
@@ -314,8 +314,8 @@ button{cursor:pointer}
     gap:8px 12px;padding:11px 6px;
   }
   .pr-id{grid-area:id}.pr-quote{grid-area:quote}.pr-signal{grid-area:signal}.pr-dev{grid-area:dev}.pr-progress{grid-area:progress}.pr-act{grid-area:act}
-  .pool-row.predict{grid-template-columns:1fr;grid-template-areas:"id" "quote" "dev" "progress" "act";gap:7px 12px}
-  .pool-row.predict .pr-id{grid-area:id}.pool-row.predict .pr-quote{grid-area:quote}.pool-row.predict .pr-dev{grid-area:dev}.pool-row.predict .pr-progress{grid-area:progress}.pool-row.predict .pr-act{grid-area:act}
+  .pool-row.predict{grid-template-columns:1fr;grid-template-areas:"id" "quote" "dev" "act";gap:7px 12px}
+  .pool-row.predict .pr-id{grid-area:id}.pool-row.predict .pr-quote{grid-area:quote}.pool-row.predict .pr-dev{grid-area:dev}.pool-row.predict .pr-act{grid-area:act}
   .pool-row.predict .pr-dev{border-left:0;padding-left:0}
   .pr-quote{text-align:right}
   .pr-act{justify-content:stretch}

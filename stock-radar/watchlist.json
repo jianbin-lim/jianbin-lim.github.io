@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T19:33:05.943Z",
+  "exportedAt": "2026-11-26T19:33:22.994Z",
   "groups": [
     {
       "id": "g1",
@@ -38,6 +38,11 @@
   ],
   "activeGroup": "g2",
   "watchlist": [
+    {
+      "code": "605018",
+      "name": "长华集团",
+      "group": "g2"
+    },
     {
       "code": "002242",
       "name": "九阳股份",
@@ -154,5 +159,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T19:33:05.943Z"
+  "updatedAt": "2026-11-26T19:33:22.994Z"
 }

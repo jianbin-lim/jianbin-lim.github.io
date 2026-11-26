@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T18:59:10.522Z",
+  "exportedAt": "2026-11-26T18:59:17.982Z",
   "groups": [
     {
       "id": "g1",
@@ -49,6 +49,11 @@
       "group": "gmwtoyat7"
     },
     {
+      "code": "603324",
+      "name": "盛剑科技",
+      "group": "gmwtoyat7"
+    },
+    {
       "code": "600467",
       "name": "好当家",
       "group": "gmwxudigf"
@@ -82,11 +87,6 @@
       "code": "301413",
       "name": "安培龙",
       "group": "g2"
-    },
-    {
-      "code": "603324",
-      "name": "盛剑科技",
-      "group": "gmwtoyat7"
     },
     {
       "code": "002771",
@@ -154,5 +154,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T18:59:10.522Z"
+  "updatedAt": "2026-11-26T18:59:17.982Z"
 }

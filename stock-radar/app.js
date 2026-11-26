@@ -1268,12 +1268,6 @@ async function evaluatePoolItem(item){
   var idxRows=idx.rows.filter(function(r){ return r.date<=maxDate; }).slice(-60);
   if(idxRows.length<8) throw new Error("指数数据不足");
   var minfo=monitorInfoFor(item.code);
-  var mstart=minfo.start&&minfo.start<=maxDate?minfo.start:"";
-  if(mstart){
-    rows=rows.filter(function(r){ return r.date>=mstart; });
-    idxRows=idxRows.filter(function(r){ return r.date>=mstart; });
-    if(rows.length<8) throw new Error("监管重置后数据不足");
-  }
   var mexit=minfo.exited?minfo.end:"";
   // 盘口价已经属于今天：补一根当日K线，让预测按现价而不是昨收计算。
   // 指数当天涨跌在盘口接口里不可得，这里按 0 处理，只用于池内快速预测；
@@ -1298,14 +1292,14 @@ async function evaluatePoolItem(item){
   var last=a.last;
   var pct=item.pct!=null?item.pct:last.pct;
   var bestRange=best?(best.id==="d10"?a.range10:a.range30):null;
-  var sp=best?{space:triggerSpace(best),hit:false}:{space:null,hit:false};
-  if(sp.space!=null&&sp.space<=0) sp.hit=true;
+  var offset=isTimeClosed(nowHm())?1:0;
+  var sp=best?requiredSpaceAt(a,best,offset):{space:null,hit:false};
   // 30 日窗口更长，收盘后旧高点基数的影响更大；若当天空间仍小于涨停幅度，
   // 用下一交易日的滚动窗口再核一次，避免“上面小于10%、下面+10%却不触发”的矛盾。
   if(best&&best.id==="d30"&&sp.space!=null&&sp.space<th.limit&&!sp.hit){
-    sp=requiredSpaceAt(a,best,1);
+    sp=requiredSpaceAt(a,best,offset+1);
   }
-  var nsp=best?requiredSpaceAt(a,best,1):{space:null,hit:false};
+  var nsp=best?requiredSpaceAt(a,best,offset+1):{space:null,hit:false};
   return {
     code:item.code, name:name, board:info.board, boardName:info.boardName,
     industry:item.industry||"", pct:pct, price:item.price>0?item.price:last.close,
@@ -1482,8 +1476,7 @@ function monitorInfoFor(code){
   return {start:start,end:end,active:!!(start&&start<=today&&!exited),exited:exited};
 }
 function monitorStartFor(code){
-  var info=monitorInfoFor(code);
-  return info.start||"";
+  return "";
 }
 async function ensureMonitor(){
   if(monitor.items.length) return;
@@ -2478,7 +2471,7 @@ function poolRowHtml(x){
         (price!=null?'<small class="space-price" title="按现价 × (1+所需涨幅) 估算">触发价 ¥'+fmtPrice(price)+'</small>':'')+
         '<small>'+esc(x.spaceRule)+'</small></div>';
     };
-    spaceHtml='<div class="pr-progress"><div class="trigger-spaces">'+spaceCell("当日触发",x.space,x.spaceHit)+spaceCell("次日触发",x.nextSpace,x.nextSpaceHit)+'</div></div>';
+    spaceHtml='<div class="pr-progress"><div class="trigger-spaces">'+spaceCell("T+0触发",x.space,x.spaceHit)+spaceCell("T+1触发",x.nextSpace,x.nextSpaceHit)+'</div></div>';
   }
   var order="";
   if(pool.mode==="watch"){
@@ -2538,7 +2531,7 @@ function renderPoolList(){
     }
     var by={};
     watchState.items.forEach(function(x){ by[x.code]=x; });
-    box.innerHTML='<div class="watch-head"><span>股票名称</span><span>涨幅</span><span>涨幅偏离值</span><span>触发空间（当日 / 次日）</span><span></span></div>'+
+    box.innerHTML='<div class="watch-head"><span>股票名称</span><span>涨幅</span><span>涨幅偏离值</span><span>触发空间（T+0 / T+1）</span><span></span></div>'+
       active.map(function(w){ return by[w.code]; }).filter(Boolean).map(poolRowHtml).join("");
     return;
   }
@@ -2935,12 +2928,7 @@ async function runAnalyze(code,opts){
     var idxRows=idx.rows.filter(function(r){ return r.date<=maxDate; });
     if(idxRows.length<8) throw new Error("对应指数在截止日前的数据不足。");
     var minfo=monitorInfoFor(info.code);
-    var mstart=minfo.start&&minfo.start<=maxDate&&(!asof||minfo.start<=asof)?minfo.start:"";
-    if(mstart){
-      rows=rows.filter(function(r){ return r.date>=mstart; });
-      idxRows=idxRows.filter(function(r){ return r.date>=mstart; });
-      if(rows.length<8) throw new Error("监管重置起点 "+mstart+" 之后不足 8 个交易日，无法计算。");
-    }
+    var mstart="";
     var mexit=minfo.exited?minfo.end:"";
     var name=stock.name||info.code;
     var isST=/ST/i.test(name);

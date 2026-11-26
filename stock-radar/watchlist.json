@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T15:40:47.986Z",
+  "exportedAt": "2026-11-26T16:27:20.996Z",
   "groups": [
     {
       "id": "g1",
@@ -32,7 +32,7 @@
       "name": "独立趋势"
     }
   ],
-  "activeGroup": "gmwtoyat7",
+  "activeGroup": "g1",
   "watchlist": [
     {
       "code": "002148",
@@ -130,5 +130,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T15:40:47.987Z"
+  "updatedAt": "2026-11-26T16:27:20.996Z"
 }

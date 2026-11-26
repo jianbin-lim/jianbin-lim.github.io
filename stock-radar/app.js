@@ -2454,16 +2454,6 @@ function poolRowHtml(x){
   if(isMonitored(x.code)&&st!=="warn") extra+=' <i class="pool-badge warn">监控中</i>';
   if(x.monitorExit) extra+=' <i class="pool-badge ok">已出监管</i>';
   var isWatch=pool.mode==="watch";
-  var sectorHtml="";
-  if(isWatch){
-    var wi=watchOf(x.code), tags=[];
-    if(x.industry) tags.push(x.industry);
-    if(wi){ var gn=groupName(wi.group); if(gn&&tags.indexOf(gn)<0) tags.push(gn); }
-    if(!tags.length && x.boardName) tags.push(x.boardName);
-    sectorHtml='<div class="pr-signal watch-sector">'+tags.map(function(t,i){
-      return '<span class="sector-tag'+(i?" group":"")+'">'+esc(t)+'</span>';
-    }).join("")+'</div>';
-  }
   var spaceHtml="";
   if(pool.mode==="watch" && x.space!=null){
     var spaceCell=function(label,val,hit){
@@ -2494,7 +2484,7 @@ function poolRowHtml(x){
       '<span>'+esc(x.code)+' · '+esc(x.boardName||"")+' <i class="pool-badge '+esc(st)+'">'+esc(stText)+'</i>'+extra+'</span>'+
     '</div>'+
     '<div class="pr-quote"><b class="'+cls(pct)+'">'+fmtPct(pct)+'</b><span>'+(x.price==null?"—":"¥"+fmtPrice(x.price))+'</span></div>'+
-    (sectorHtml || ('<div class="pr-signal"><span class="evtag '+evCls+'" title="'+esc(ev)+'">'+esc(ev)+'</span><small>'+esc(x.eventTime||"盘中")+'</small></div>'))+
+    (isWatch?"":('<div class="pr-signal"><span class="evtag '+evCls+'" title="'+esc(ev)+'">'+esc(ev)+'</span><small>'+esc(x.eventTime||"盘中")+'</small></div>'))+
     '<div class="pr-dev"><b class="'+(st==="sev"||st==="abn"?"up":st==="near"?"amber":"dm")+'">'+esc(x.nearestValue||"—")+'</b><small>'+esc(x.nearestLabel||"最近红线")+' · '+esc(x.nearestThreshold||"")+(x.nearestRange?'<br>最大区间 '+esc(x.nearestRange):'')+'</small></div>'+
     (spaceHtml || '<div class="pr-progress"><div class="pbar"><i style="width:'+barW.toFixed(1)+'%"></i></div><small>'+esc(foot)+'</small><small class="today-flag">'+esc(todayTxt)+'</small></div>')+
     '<div class="pr-act">'+order+
@@ -2540,7 +2530,7 @@ function renderPoolList(){
     }
     var by={};
     watchState.items.forEach(function(x){ by[x.code]=x; });
-    box.innerHTML='<div class="watch-head"><span>股票名称</span><span>涨幅</span><span>涨幅偏离值</span><span>触发空间（当日 / 次日）</span><span>板块</span><span></span></div>'+
+    box.innerHTML='<div class="watch-head"><span>股票名称</span><span>涨幅</span><span>涨幅偏离值</span><span>触发空间（当日 / 次日）</span><span></span></div>'+
       active.map(function(w){ return by[w.code]; }).filter(Boolean).map(poolRowHtml).join("");
     return;
   }

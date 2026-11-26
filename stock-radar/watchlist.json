@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T15:40:36.514Z",
+  "exportedAt": "2026-11-26T15:40:43.823Z",
   "groups": [
     {
       "id": "g1",
@@ -32,7 +32,7 @@
       "name": "独立趋势"
     }
   ],
-  "activeGroup": "g3",
+  "activeGroup": "gmwtoyat7",
   "watchlist": [
     {
       "code": "002148",
@@ -72,11 +72,6 @@
     {
       "code": "301052",
       "name": "果麦文化",
-      "group": "g3"
-    },
-    {
-      "code": "300426",
-      "name": "华智数媒",
       "group": "g3"
     },
     {
@@ -135,5 +130,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T15:40:36.514Z"
+  "updatedAt": "2026-11-26T15:40:43.823Z"
 }

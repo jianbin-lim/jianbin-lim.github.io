@@ -964,3 +964,7 @@ input[type=date]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
     grid-template-areas:"id" "quote" "dev" "progress" "act";
   }
 }
+
+/* watch emphasis: rule term + trigger rule */
+.pool-row.watch-row .dev-term,.pool-row.watch-row .space-rule{color:var(--amber2);font-style:normal;font-weight:700}
+

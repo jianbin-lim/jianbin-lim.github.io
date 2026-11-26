@@ -1,15 +1,11 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T21:30:13.916Z",
+  "exportedAt": "2026-11-26T21:30:25.612Z",
   "groups": [
     {
       "id": "g1",
       "name": "龙头"
-    },
-    {
-      "id": "gmwce6vdn",
-      "name": "冰雪经济"
     },
     {
       "id": "gmwtoyat7",
@@ -36,7 +32,7 @@
       "name": "独立趋势"
     }
   ],
-  "activeGroup": "gmwce6vdn",
+  "activeGroup": "gmwtoyat7",
   "watchlist": [
     {
       "code": "603960",
@@ -141,7 +137,7 @@
     {
       "code": "601188",
       "name": "龙江交通",
-      "group": "gmwce6vdn"
+      "group": "g1"
     },
     {
       "code": "002086",
@@ -159,5 +155,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T21:30:13.916Z"
+  "updatedAt": "2026-11-26T21:30:25.612Z"
 }

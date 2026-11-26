@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T18:31:52.716Z",
+  "exportedAt": "2026-11-26T18:32:08.074Z",
   "groups": [
     {
       "id": "g1",
@@ -38,11 +38,6 @@
   ],
   "activeGroup": "gmwtoyat7",
   "watchlist": [
-    {
-      "code": "300324",
-      "name": "旋极信息",
-      "group": "gmwtoyat7"
-    },
     {
       "code": "600467",
       "name": "好当家",
@@ -84,13 +79,18 @@
       "group": "gmwtoyat7"
     },
     {
+      "code": "603324",
+      "name": "盛剑科技",
+      "group": "gmwtoyat7"
+    },
+    {
       "code": "002771",
       "name": "真视通",
       "group": "gmwtoyat7"
     },
     {
-      "code": "603324",
-      "name": "盛剑科技",
+      "code": "300324",
+      "name": "旋极信息",
       "group": "gmwtoyat7"
     },
     {
@@ -149,5 +149,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T18:31:52.716Z"
+  "updatedAt": "2026-11-26T18:32:08.074Z"
 }

@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T17:55:36.359Z",
+  "exportedAt": "2026-11-26T17:55:46.976Z",
   "groups": [
     {
       "id": "g1",
@@ -38,6 +38,11 @@
   ],
   "activeGroup": "gmwce7ekq",
   "watchlist": [
+    {
+      "code": "600814",
+      "name": "杭州解百",
+      "group": "gmwce7ekq"
+    },
     {
       "code": "600467",
       "name": "好当家",
@@ -139,5 +144,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T17:55:36.359Z"
+  "updatedAt": "2026-11-26T17:55:46.976Z"
 }

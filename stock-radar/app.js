@@ -1642,7 +1642,12 @@ function predictRowHtml(x){
     var tone=hit?"up":"amber";
     var lim=Number(x.limit)||(/^(30|68)/.test(x.code)?20:10);
     var over=val!=null&&val>lim+0.001;
-    return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(over?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(val)+(over?"*":"")))+'</b><small>'+esc(x.rule)+'</small></div>';
+    var show=val, basePx=roundPrice(x.price);
+    if(!hit && val!=null && basePx>0){
+      var tp=roundPrice(basePx*(1+val/100));
+      show=Math.round((tp/basePx-1)*10000)/100;
+    }
+    return '<div class="trigger-space"><span class="space-label">'+label+'</span><b class="'+tone+'"'+(over?' title="触发所需涨幅超过单日涨停，单日涨停也无法触发"':'')+'>'+(hit?"已触发":(val==null?"—":fmtPct(show)+(over?"*":"")))+'</b><small>'+esc(x.rule)+'</small></div>';
   };
   var currentMeta=same
     ? '<small class="pred-x">'+x.days+'日偏离 '+fmtPct(x.dev)+'</small><small class="pred-range">同向异动</small>'

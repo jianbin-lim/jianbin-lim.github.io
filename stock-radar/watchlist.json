@@ -1,7 +1,7 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T19:23:46.083Z",
+  "exportedAt": "2026-11-26T19:23:48.958Z",
   "groups": [
     {
       "id": "g1",
@@ -38,6 +38,11 @@
   ],
   "activeGroup": "g1",
   "watchlist": [
+    {
+      "code": "002242",
+      "name": "九阳股份",
+      "group": "g1"
+    },
     {
       "code": "000530",
       "name": "冰山冷热",
@@ -134,11 +139,6 @@
       "group": "gmwce6vdn"
     },
     {
-      "code": "002242",
-      "name": "九阳股份",
-      "group": "g1"
-    },
-    {
       "code": "002086",
       "name": "东方海洋",
       "group": "g1"
@@ -154,5 +154,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T19:23:46.083Z"
+  "updatedAt": "2026-11-26T19:23:48.958Z"
 }

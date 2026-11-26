@@ -1,11 +1,15 @@
 {
   "app": "异动雷达",
   "version": 2,
-  "exportedAt": "2026-11-26T19:23:29.318Z",
+  "exportedAt": "2026-11-26T19:23:33.171Z",
   "groups": [
     {
       "id": "g1",
       "name": "龙头"
+    },
+    {
+      "id": "gmwce6vdn",
+      "name": "冰雪经济"
     },
     {
       "id": "gmwtoyat7",
@@ -20,10 +24,6 @@
       "name": "传媒短剧"
     },
     {
-      "id": "gmwce6vdn",
-      "name": "冰雪经济"
-    },
-    {
       "id": "gmwxudigf",
       "name": "农业+养殖+水产"
     },
@@ -36,7 +36,7 @@
       "name": "独立趋势"
     }
   ],
-  "activeGroup": "g1",
+  "activeGroup": "gmwce6vdn",
   "watchlist": [
     {
       "code": "002685",
@@ -154,5 +154,5 @@
       "group": "gmwce8f0t"
     }
   ],
-  "updatedAt": "2026-11-26T19:23:29.318Z"
+  "updatedAt": "2026-11-26T19:23:33.171Z"
 }
